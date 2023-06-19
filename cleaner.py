@@ -8,9 +8,9 @@ Created on Wed May 31 09:16:51 2023
 
 import os, argparse
 import pandas as pd
+import copy
 
-from .models import Project
-from .read import _aggregator
+from .models import Project, GrvLvlProject
 
 
 # Para limpiar ruido de una variable de un archivo csv
@@ -44,124 +44,52 @@ def cleaning_csv(wd, file, var, output=None, minor=None, major=None,
     return f'Save to {wd}/{output}'
 
 
-# # Para limpiar ruido de una variable de un proyecto
-# def cleaning_prj(proj, var, minor=None, major=None, avoid=None, select=None):
-    
-#     clean_df = proj.df
-    
-#     if minor != None:
-                
-#         clean_df = clean_df[clean_df[var] > minor]
-        
-#     if major != None:
-        
-#         clean_df = clean_df[clean_df[var] < major]
-    
-#     if avoid != None:
-        
-#         clean_df = clean_df[(clean_df[var] != avoid)]
-        
-#     elif select != None:
-            
-#         clean_df = clean_df[(clean_df[var] == select)]
-    
-#     elif avoid != None and avoid != None:
-        
-#         raise ValueError("No puede seleccionar solo un valor de atributo y evitar otro únicamente")
-    
-#     else:
-        
-#         pass
-    
-#     proj.df = clean_df
-    
-#     return proj
-
-
-# # Para limpiar variables no necesarias
-# def cleaning_var(prj, *args):
-    
-#     """La lista de argumentos proveídos en la función
-#     y en el dataframe deben seguir el orden:
-#         - nivelación: nomenclatura (id), geometria,
-#         altura_sobre_el_nivel_del_mar
-#         - gravedades absolutas o relativas: nomenclatura (id),
-#         geometria, gravedad (mGals)
-#     """
-    
-#     # Variables que del proyecto se seleccionarán
-#     useful_ordered_vars = list(args)
-    
-#     clean_df = prj.df
-#     tipo = prj.tipo
-    
-#     if tipo == 'nivelacion':
-        
-#         prj.df = cleaning_levelling(clean_df, useful_ordered_vars)
-    
-#     elif tipo == 'gravedad absoluta' or tipo == 'gravedad relativa':
-        
-#         prj.df = cleaning_absolute_relative_gravity(clean_df, useful_ordered_vars)
-        
-#     else:
-#         return None
-    
-#     return prj
-
-
-# ## Para estandarizar nivelación
-# def cleaning_levelling(clean_df, useful_ordered_vars):
-
-#     clean_df = clean_df.rename(columns={useful_ordered_vars[0]: 'ID',
-#                                         useful_ordered_vars[1]: 'GEOM',
-#                                         useful_ordered_vars[2]: 'ALTURA_M_S'})
-#     clean_df = clean_df[['ID', 'GEOM', 'ALTURA_M_S']]
-    
-#     return clean_df
-
-
-# ## Para estandarizar gravimetría absoluta o relativa
-# def cleaning_absolute_relative_gravity(clean_df, useful_ordered_vars):
-    
-#     clean_df = clean_df.rename(columns={useful_ordered_vars[0]: 'ID',
-#                                         useful_ordered_vars[1]: 'GEOM',
-#                                         useful_ordered_vars[2]: 'GRAV'})
-#     clean_df = clean_df[['ID', 'GEOM', 'GRAV']]
-    
-#     return clean_df
-
-
 ## Unir gravedad absoluta y relativa
 def join_gravities(*args):
     
+    _args = list(args)
     
+    ## dataframe nuevo para almacenar
     data = pd.DataFrame({'ID': [], 'GEOM': [], 'GRAV': []})
     
     if check_class(args):
         
-        #Para trazar los archivos unidos"
-        files = ''
+        files = join_files(_args)
         
-        #Une los dataframes estructurados"
-        for a in args:
-            
-            _data = a.df
-            
-            if list(a.df.columns) == ['ID', 'GEOM', 'GRAV']:
-            
-                data = pd.concat([data, _data], axis=0)
-                
-            files += a.file + ' '
-        
-        groups = _aggregator(data)
+        data = join_df(_args)
         
         """Crea el objeto Project de gravedades absolutas
         y relativas unidas"""
         
-        joined_gravs = Project(files, data, groups, 'gravedades')
+        joined_gravs = Project(files, data, 'gravedades')
         
         return joined_gravs
+
+## Para unir nombres de archivos
+def join_files(fs):
+    #Para trazar los archivos unidos"
+    files = ''
+    for f in fs:
+        
+        files += f.file + ' '
+        
+    return files.rstrip()
+
+## Para unir data frames
+def join_df(datas):
     
+    ## dataframe nuevo para almacenar
+    data = pd.DataFrame({'ID': [], 'GEOM': [], 'GRAV': []})
+    
+    for d in datas:
+        
+        _data = d.df
+        
+        if list(d.df.columns) == ['ID', 'GEOM', 'GRAV']:
+            
+            data = pd.concat([data, _data], axis=0)
+        
+    return data
 
 ## Para verificar que objetos sean de la clase Project
 def check_class(*args):
@@ -189,37 +117,47 @@ def intersects(*args):
     arg2 = _args[1]
     arg3 = _args[2]
     
-    
+    df1 = arg1.df
+    df2 = arg2.df
+
     ## Detecta coincidencias por coordenadas para nivelación
     if len(_args) == 4 and tipo == 'nivelacion' and arg3 == True:
-        
+
         arg4 = _args[3]
-        common = arg1.df[arg1.df['GEOM'].apply(lambda point: any(point.distance(other) <= arg4 for other in arg2.df['GEOM']))]
-        del common['GEOM_y']
+        common = df1[df1['GEOM'].apply(lambda point: any(point.distance(other) <= arg4 for other in df2['GEOM']))]
         
-        return common.rename(columns={'GEOM_x': 'GEOM'})
+        __df2 = copy.deepcopy(df2)
+
+        del __df2['GEOM']
+        common = pd.merge(common, __df2, left_on='ID', right_on='ID')
+        
+        return common
             
     ## Detecta coincidencias por nomenclaturas para nivelación
     elif len(_args) == 3 and tipo == 'nivelacion' and arg3 == False:
         
-        common = pd.merge(arg1.df, arg2.df, left_on='ID', right_on='ID')
+        common = pd.merge(df1, df2, left_on='ID', right_on='ID')
         del common['GEOM_y']
         
         return common.rename(columns={'GEOM_x': 'GEOM'})
     
     ## Detecta coincidencias por coordenadas para gravimetría
-    elif len(_args) == 4 and tipo in Project.valid_types[1:len(Project.valid_types)] and arg3 == True:
+    elif len(_args) == 4 and tipo in Project.VALID_TYPES[1:len(Project.VALID_TYPES)] and arg3 == True:
         
         arg4 = _args[3]
-        common = arg2.df[arg2.df['GEOM'].apply(lambda point: any(point.distance(other) <= arg4 for other in arg1.df['GEOM']))]
-        del common['GEOM_y']
+        common = df2[df2['GEOM'].apply(lambda point: any(point.distance(other) <= arg4 for other in df1['GEOM']))].merge(df1[['GEOM','ALTURA_M_S']], on='GEOM')
+
+        __df1 = copy.deepcopy(df1)
+        del __df1['GEOM']
         
-        return common.rename(columns={'GEOM_x': 'GEOM'})
+        common = pd.merge(common, __df1, left_on='ID', right_on='ID')
+        
+        return common
     
     ## Detecta coincidencias por nomenclatura para nivelación
-    elif len(_args) == 3 and tipo in Project.valid_types[1:len(Project.valid_types)] and arg3 == False:
+    elif len(_args) == 3 and tipo in Project.VALID_TYPES[1:len(Project.VALID_TYPES)] and arg3 == False:
         
-        common = pd.merge(arg2.df, arg1.df, left_on='ID', right_on='ID')
+        common = pd.merge(df2, df1, left_on='ID', right_on='ID')
         del common['GEOM_y']
         
         return common.rename(columns={'GEOM_x': 'GEOM'})
@@ -238,64 +176,91 @@ def levelling_gravity_intersect(**kwargs):
 
     nivelacion: objeto de nivelación
     gravimetria: objeto de gravimetría
+    prj_coords: tipo de objeto de coordenadas base
     coordenadas: True si el metodo para intersectar es por coordenadas, si no, False para utilizar nomenclaturas
     umbral: si coordenadas es True numérico, si no, omitir
     """
     
-    
-    niv = kwargs['nivelacion']
-    grv = kwargs['gravimetria']
+    prj1 = kwargs['nivelacion']
+    prj2 = kwargs['gravimetria']
+    prj_coords = kwargs['prj_coords']
     coords = kwargs['coordenadas']
     
-    print(niv.file, grv.file)
     
-    ## Para verificar que el objeto base sea correcto
-    if niv.file == grv.file:
+    ## Para verificar que objetos no sean el mismo
+    if prj1.file == prj2.file:
         raise ValueError("Está utilizando el mismo objeto")
     else:
         pass
-        
+    
     ## Para verificar que objetos sean de la clase Project
-    if type(niv) == type(grv) == Project:
+    if type(prj1) == type(prj2) == Project:
         pass
     else:
         raise ValueError(f"Objetos no son de la clase: {Project}")
+        
+    ## Para verificar que la proveniencia de coordenadas sea bien especificada
+    if prj_coords in Project.VALID_TYPES:
+        pass
+    else:
+        raise ValueError(f"El tipo de objeto {prj_coords} de coordenadas de base no existe")
+
     
     ## Para segmentar las funcionalidades de la función por método
     largs = len(kwargs)
-    if largs == 4 and coords == True:
+    if largs == 5 and coords == True:
 
-        umbral = kwargs['coordenadas']
+        umbral = kwargs['umbral']
         
         # Para objetos de nivelación
-        if niv.tipo == 'nivelacion':
-            return Project.intersects(niv, grv, coords, umbral)
+        if prj_coords == Project.VALID_TYPES[0]:
+            
+            ## Unir nombres de archivos
+            files = join_files([prj1, prj2])
+            
+            return GrvLvlProject(files, intersects(prj1, prj2, coords, umbral),
+                                 GrvLvlProject.VALID_TYPES[0])
         
         ## Para objetos de gravimetría
-        elif grv.tipo in Project.valid_types[1:len(Project.valid_types)]:
+        elif prj_coords in Project.VALID_TYPES[1:len(Project.VALID_TYPES)]:
+            
+            ## Unir nombres de archivos
+            files = join_files([prj2, prj1])
             
             ## Para determinar si el proyecto a intersectar es de nivelacion
             ## dado un proyecto de gravimetria
-            return Project.intersects(niv, grv, coords, umbral)
+            return GrvLvlProject(files, intersects(prj2, prj1, coords, umbral),
+                                 GrvLvlProject.VALID_TYPES[0])
     
-    elif largs == 3 and coords == False:
+    elif largs == 4 and coords == False:
         
         # Para objetos de nivelación
-        if niv.tipo == 'nivelacion':
-            return intersects(niv, grv, coords)
+        if prj_coords == Project.VALID_TYPES[0]:
+            
+            ## Unir nombres de archivos
+            files = join_files([prj1, prj2])
+            
+            return GrvLvlProject(files, intersects(prj1, prj2, coords),
+                                 GrvLvlProject.VALID_TYPES[0])
         
         ## Para objetos de gravimetría
-        elif grv.tipo in Project.valid_types[1:len(Project.valid_types)]:
+        elif prj_coords in Project.VALID_TYPES[1:len(Project.VALID_TYPES)]:
+            
+            ## Unir nombres de archivos
+            files = join_files([prj2, prj1])
             
             ## Para determinar si el proyecto a intersectar es de nivelacion
             ## dado un proyecto de gravimetria
-            return intersects(niv, grv, coords)
+            
+            return GrvLvlProject(files, intersects(prj2, prj1, coords),
+                                 GrvLvlProject.VALID_TYPES[0])
+        
         
     else:
         
         raise ValueError("Escriba help(levelling_gravity_intersect) para entender cómo utilizar la función")
 
-     
+
 
 # Desde el terminal
 if __name__ == '__main__':

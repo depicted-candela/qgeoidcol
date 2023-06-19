@@ -7,8 +7,7 @@ Created on Thu Jun  1 19:43:42 2023
 """
 
 import matplotlib.pyplot as plt
-import pandas as pd
-
+from pandas.core.frame import DataFrame as pdf
 
 ## Clase para estandarizar objetos de proyectos de nivelación
 ## y gravimétricos
@@ -21,46 +20,99 @@ class Project:
         - el tipo 'nivelacion-gravedades' se refiere a un dataframe con
     gravedades absolutas y relativas intersecadas 
     """
-    valid_types = ['nivelacion', 'gravedad-absoluta', 'gravedad-relativa',
+    VALID_TYPES = ['nivelacion', 'gravedad-absoluta', 'gravedad-relativa',
                    'gravedades']
     
     
     ## Valores inicializadores
-    def __init__(self, file, df, groups, tipo, aggregator=None):
+    def __init__(self, file, df, tipo):
         
-        self.file = file
-        self.df = df
-        self.groups = groups
-        self.aggregator = aggregator
+        # Para validar tipos de formato de objetos de entrada
+        if type(file) == str and type(df) == pdf and type(tipo) == str:
+            self.__file = file
+            self.__df = df
         
-        if tipo in Project.valid_types:
-            self.tipo = tipo
+        ## Para validar tipo de proyecto
+        if tipo in self.VALID_TYPES:
+            print(f"Inicializando objeto de {tipo}")
+            self.__tipo = tipo
         else:
-            raise ValueError(f"Valores válidos para tipo son: {', '.join(self.valid_types)}")
+            raise ValueError(f"Valores válidos para tipo son: {', '.join(self.VALID_TYPES)}")
+        
+        ## Para crear grupos basados en el agregador
+        self.__aggregator = None
+        self.__groups = None
     
+    
+    ## Define el agregador como propiedad del objeto
+    @property
+    def aggregator(self):
+        return self.__aggregator
+    
+    ## Define groups como propiedad del objeto
+    @property
+    def groups(self):
+        return self.__groups
+        
+    
+    ## Determinador de agrupaciones
+    def aggregator_group(self, agg):
+        
+        ## Si la variable está en el data frame
+        if agg in list(self.df.columns):
+            
+            def aggregator(self, value):
+                self.__aggregator = value
+            
+            aggregator(self, agg)
+            grs = list(set(list(self.df[agg])))
+
+            def groups(self, value):
+                self.__groups = value
+            
+            groups(self, grs)
+            
+        else:
+            raise ValueError(f"La variable {aggregator} no existe")
+            
+    
+    ## Define el agregador como propiedad del objeto
+    @property
+    def df(self):
+        return self.__df
+    
+    ## Define archivo como propiedad del objeto
+    @property
+    def file(self):
+        return self.__file
     
     # Define el tipo como propiedad del objecto
     @property
-    def _tipo(self):
-        return self.tipo
+    def tipo(self):
+        return self.__tipo
     
-    
+
     ## Reglas para tipo de dato
-    @_tipo.setter
-    def _tipo(self, value):
+    def set_df_file_tipo(self, df, file, tipo):
         
-        if value in Project.valid_types:
-            self.tipo = value
+        # Para validar tipos de formato de objetos de entrada
+        if type(file) == str and type(df) == pdf and type(tipo) == str:
+            self.__file = file
+            self.__df = df
         else:
-            raise ValueError(f"Valores válidos para tipo son: {', '.join(self.valid_types)}")
+            raise TypeError(f"Los valores de entrada {(df, file, tipo)} no son del tipo indicado")
+        
+        ## Para validar tipo de proyecto
+        if tipo in self.VALID_TYPES:
+            self.__tipo = tipo
+        else:
+            raise ValueError(f"Valores válidos para tipo son: {', '.join(self.VALID_TYPES)}")
+
     
     # Resultado para la función print
     def __str__(self):
         return f"{self.file}"
     
-    ## Llama el nombre del archivo
-    def self_file(self):
-        return self.file
     
     ## Gráfico para observar coordenadas
     def plot_coordinates(self):
@@ -80,7 +132,7 @@ class Project:
     # Para limpiar ruido de un proyecto por una variable
     def cleaning(self, var, minor=None, major=None, avoid=None, select=None):
         
-        clean_df = self.df
+        clean_df = self.__df
         
         if minor != None:
                     
@@ -106,7 +158,7 @@ class Project:
             
             pass
         
-        self.df = clean_df
+        self.__df = clean_df
     
     ## Para estandarizar nivelación
     @classmethod
@@ -132,11 +184,13 @@ class Project:
         return clean_df
     
     
-    # Para limpiar variables no necesarias
+    ## Para limpiar variables no necesarias
     def cleaning_var(self, *args):
         
-        # Extrae argumentos
+        ## Extrae argumentos
         _args = list(args)
+        
+        ## Comprueba validez de parámetros
         if (len(_args) != 3):
             
             error = """La lista de argumentos proveídos en la función
@@ -145,38 +199,45 @@ class Project:
             altura_sobre_el_nivel_del_mar
             - gravedades absolutas o relativas: nomenclatura (id),
             geometria, gravedad (mGals)
-        """
+            """
             raise ValueError(error)
         
+        ## Para extraer argumentos
         _id = _args[0]
         geom = _args[1]
         var = _args[2]
         
-        # Variables que del proyecto se seleccionarán
+        ## Variable para utilizar función para gravedad o nivelación
         tipo = self.tipo
         
         if tipo == 'nivelacion':
             
-            self.df = Project.cleaning_levelling(self, _id, geom,
-                                                 var)
+            df = self.cleaning_levelling(self, _id, geom,  var)
+            self.set_df_file_tipo(df, self.file, self.tipo)
         
         elif tipo == 'gravedad-absoluta' or tipo == 'gravedad-relativa':
             
-            self.df = Project.cleaning_absolute_relative_gravity(self,
-                                                                 _id, geom,
-                                                                 var)
+            df = self.cleaning_absolute_relative_gravity(self, _id, geom,  var)
+            self.set_df_file_tipo(df, self.file, self.tipo)
+        
+        elif tipo == 'gravedades':
             
+            raise ValueError(f'Aún no se establece rutina para limpiar archivo de tipo {tipo}')
+        
         else:
             
-            return 'No han sido proporcionados tipos de datos válidos'
+            raise ValueError('No han sido proporcionados tipos de datos válidos')
 
 
-class var:
-    def __init__(self, file, df, groups, aggregator):
-        self.file = file
-        self.df = df
-        self.groups = groups
-        self.aggregator = aggregator
+class GrvLvlProject(Project):
     
-    def __str__(self):
-        return f"{self.file}"
+    
+    VALID_TYPES = ['nivelacion-gravedades-intersectado']
+    
+    def cleaning_var():
+        pass
+    def cleaning_absolute_relative_gravity():
+        pass
+    def cleaning_levelling():
+        pass
+    

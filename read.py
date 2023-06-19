@@ -35,26 +35,5 @@ def reader(wd, file, tipo, aggregator=None):
         
         return 'Formato no soportado'
     
-    groups = _aggregator(df, aggregator)
-    
     ## Crea objeto de clase Proyecto
-    return Project(file, df, groups, tipo, aggregator)
-
-## Determinador de agrupaciones
-def _aggregator(df, aggregator=None):
-    
-    if aggregator is None:
-        groups = None
-    else:
-        groups = list(set(list(df[aggregator])))
-    
-    return groups
-
-
-### Pandas Dataframe a objeto Project
-def dataframe_to_project(df, ):
-    
-    pass
-
-
-
+    return Project(file, df, tipo)
