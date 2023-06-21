@@ -19,7 +19,7 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v2
         with:
-          python-version: 3.x  # Replace 'x' with the desired Python version
+          python-version: 3.11
 
       - name: Install conda
         run: |
@@ -35,7 +35,7 @@ jobs:
 
       - name: Install packages
         run: |
-          conda install --yes boule metpy package3  # Replace with the packages you want to install
+          conda install --yes boule metpy  # Replace with the packages you want to install
 
       #- name: Run your code
       #  run: python your_script.py  # Replace with the command to run your Python code
