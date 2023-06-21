@@ -2,13 +2,13 @@
 # -*- coding: utf-8 -*-
 """
 Created on Mon Jun 19 14:06:37 2023
-
+## Código implementado con ayuda de ChatGPT-4: openai
 @author: nicalcoca
 """
 
 from boule import GRS80
 
-class GRS80:
+class GRS_80:
     
     _dict = dict()
     

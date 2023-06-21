@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 """
 Created on Thu Jun  1 18:03:13 2023
-
+## Código implementado con ayuda de ChatGPT-4: openai
 @author: nicalcoca
 """
 
@@ -112,14 +112,3 @@ def empirica_acumulada_linea(project, var_name, breaks, start_line, end_line):
         
     # Show the plot
     plt.show()
-        
-
-
-# Estadísticos
-
-
-
-
-
-
-

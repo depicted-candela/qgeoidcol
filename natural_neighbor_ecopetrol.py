@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 """
 Created on Wed May 31 09:16:51 2023
-
+## Código implementado con ayuda de ChatGPT-4: openai
 @author: nicalcoca
 """
 

@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 """
 Created on Wed May 31 09:16:51 2023
-
+## Código implementado con ayuda de ChatGPT-4: openai
 @author: nicalcoca
 """
 
@@ -194,6 +194,7 @@ def levelling_gravity_intersect(**kwargs):
         pass
     
     ## Para verificar que objetos sean de la clase Project
+    print(type(prj1), type(prj2), Project)
     if type(prj1) == type(prj2) == Project:
         pass
     else:
@@ -219,7 +220,7 @@ def levelling_gravity_intersect(**kwargs):
             files = join_files([prj1, prj2])
             
             return GrvLvlProject(files, intersects(prj1, prj2, coords, umbral),
-                                 GrvLvlProject.VALID_TYPES[0])
+                                 GrvLvlProject.VALID_TYPES[0], 'coordenadas')
         
         ## Para objetos de gravimetría
         elif prj_coords in Project.VALID_TYPES[1:len(Project.VALID_TYPES)]:
@@ -230,7 +231,7 @@ def levelling_gravity_intersect(**kwargs):
             ## Para determinar si el proyecto a intersectar es de nivelacion
             ## dado un proyecto de gravimetria
             return GrvLvlProject(files, intersects(prj2, prj1, coords, umbral),
-                                 GrvLvlProject.VALID_TYPES[0])
+                                 GrvLvlProject.VALID_TYPES[0], 'coordenadas')
     
     elif largs == 4 and coords == False:
         
@@ -241,7 +242,7 @@ def levelling_gravity_intersect(**kwargs):
             files = join_files([prj1, prj2])
             
             return GrvLvlProject(files, intersects(prj1, prj2, coords),
-                                 GrvLvlProject.VALID_TYPES[0])
+                                 GrvLvlProject.VALID_TYPES[0], 'nomenclatura')
         
         ## Para objetos de gravimetría
         elif prj_coords in Project.VALID_TYPES[1:len(Project.VALID_TYPES)]:
@@ -253,7 +254,7 @@ def levelling_gravity_intersect(**kwargs):
             ## dado un proyecto de gravimetria
             
             return GrvLvlProject(files, intersects(prj2, prj1, coords),
-                                 GrvLvlProject.VALID_TYPES[0])
+                                 GrvLvlProject.VALID_TYPES[0], 'nomenclatura')
         
         
     else:
