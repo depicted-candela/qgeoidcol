@@ -145,7 +145,7 @@ class Project:
         y = [coord.y for coord in coords]
         
         plt.figure(2)
-        plt.scatter(x, y)
+        plt.scatter(x, y, s=0.1)
         plt.xlabel('X')
         plt.ylabel('Y')
         
@@ -162,7 +162,7 @@ class Project:
             out_x = [coord.x for coord in out_coords]
             out_y = [coord.y for coord in out_coords]
             
-            plt.scatter(out_x, out_y, c='red')
+            plt.scatter(out_x, out_y, s=1, c='red')
             plt.title(f"Coordenadas con outliers\npara {var} de {self.file}")
         
         else:
@@ -330,16 +330,16 @@ class Project:
         ## Extracción de valores del dataframe
         array = np.array(self.df[var])
         
-        ## Para detectar outliers con media o mediana
+        ## Para detectar outliers con media o SVM
         # Media
         if normality(array):
             outliers = normal_histogram_outlier(array, umbral, var)
             
-        # Mediana
+        # SVM
         else:
             
             # Detecta outliers de una variable anormal
-            outliers = anormal_histogram_outlier(array, var)
+            outliers = anormal_histogram_outlier(self, var)
             
             # Si no hay outliers
             if outliers is None:
@@ -350,6 +350,7 @@ class Project:
                 
                 self.plot_coordinates(self, outliers, var)
             
+            return outliers
     
     ## Para detectar outliers dada una variable y un dataframe base
     def boxcox_outlier(self, **kwargs):

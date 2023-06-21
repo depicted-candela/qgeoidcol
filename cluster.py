@@ -27,13 +27,15 @@ def simpleKMeans(array, todo):
         labels = kmeans.labels_
         
         # Valores outliers segmentados en altos y bajos
-        ones = where(labels==1)[0]
-        zeros = where(labels==0)[0]
+        ones = where(labels==0)[0]
+        zeros = where(labels==1)[0]
         
         # Creación de límites altos y bajos
-        minus = take(array, zeros)
-        maxis=  take(array, ones)
+        maxis = take(array, zeros)
+        minus =  take(array, ones)
         limits = [min(minus), max(minus), min(maxis), max(maxis)]
+        
+        print(limits)
         
         return limits
     
