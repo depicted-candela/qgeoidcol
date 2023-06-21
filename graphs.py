@@ -8,6 +8,7 @@ Created on Thu Jun  1 20:59:57 2023
 
 import matplotlib.pyplot as plt
 import numpy as np
+import copy
 
 ## Código implementado con ayuda de ChatGPT-4: openai
 
@@ -58,43 +59,72 @@ def values_per_lines_limited(project, var_name, start_line, end_line):
 
 
 ## Para atípicos de una variable anormal
-def anormal_histogram_outlier(array, var):
+def anormal_histogram_outlier(prj, var):
     
-    # Paquetes para Median Absolute Deviation
-    from pyod.models.mad import MAD
+    subdf = prj.df[[var, 'GEOM']]
+    valuesdf = prj.df[var]
     
-    array_2d = array.reshape(-1, 1)
-    mad = MAD().fit(array_2d)
-    labels = mad.labels_
+    ## Extracción de valores del dataframe
+    x = copy.deepcopy(np.array(subdf['GEOM'].apply(lambda point: point.x)))
+    y = copy.deepcopy(np.array(subdf['GEOM'].apply(lambda point: point.y)))
+    
+    try:
+        subdf.loc[:,'x'] = x
+        subdf.loc[:,'y'] = y
+    except:
+        raise ValueError('Ey, piloto')
+    
+    del subdf['GEOM']
+    
+    array3d = np.array(subdf)
+    array = np.array(valuesdf).reshape(-1, 1)
+    
+    # Paquete para One-class SVM detector
+    from pyod.models.ocsvm import OCSVM
+    
+    model = OCSVM(kernel='rbf', nu=0.5)
+    model.fit(array3d)
+    
+    labels = model.predict(array3d)
+    positions = np.where(labels==1)[0]
     
     # Si hay valores atípicos
     if 1 in labels:
-        
-        from .cluster import simpleKMeans
         
         # Para acceder a posiciones y valores atípicos
         positions = np.where(labels==1)[0]
         values = np.take(array, positions)
         
-        print(f'Hay {len(values)} valores atípicos, son:\n{values}')
+        # limits = simpleKMeans(values, 'limits-outliers')
         
-        limits = simpleKMeans(values, 'limits-outliers')
+        print(f'Hay {len(values)} valores atípicos')
+        
         
         # Histograma con todos los datos
         plt.hist(values, bins=30, alpha=0.5)
         
         # Líneas límite
-        for limit in limits:
-            plt.axvline(x=limit, color='red', linestyle='--')
+        for out in values:
+            plt.axvline(x=out, color='red', linestyle='--')
         
         # Configuración del gráfico
         plt.xlabel(var)
         plt.ylabel('Frecuencia')
         plt.title(f'Histograma con detetección de outliers\npara: {var}')
+        plt.show()
         
         return values
     
     else:
+        
+        ## Histograma sin valores atípicos
+        plt.hist(array, bins=30, alpha=0.5)
+        
+        # Configuración del gráfico
+        plt.xlabel(var)
+        plt.ylabel('Frecuencia')
+        plt.title(f'Histograma con detetección de outliers\npara: {var}')
+        plt.show()
         
         print("No hay valores atípicos")
 
