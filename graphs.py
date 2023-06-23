@@ -6,6 +6,8 @@ Created on Thu Jun  1 20:59:57 2023
 @author: nicalcoca
 """
 
+from .string_tools import split_text_in_equal_lines as stiql
+
 import matplotlib.pyplot as plt
 import numpy as np
 import copy
@@ -68,12 +70,9 @@ def anormal_histogram_outlier(prj, var):
     x = copy.deepcopy(np.array(subdf['GEOM'].apply(lambda point: point.x)))
     y = copy.deepcopy(np.array(subdf['GEOM'].apply(lambda point: point.y)))
     
-    try:
-        subdf.loc[:,'x'] = x
-        subdf.loc[:,'y'] = y
-    except:
-        raise ValueError('Ey, piloto')
-    
+    subdf.loc[:,'x'] = x
+    subdf.loc[:,'y'] = y
+
     del subdf['GEOM']
     
     array3d = np.array(subdf)
@@ -95,13 +94,10 @@ def anormal_histogram_outlier(prj, var):
         positions = np.where(labels==1)[0]
         values = np.take(array, positions)
         
-        # limits = simpleKMeans(values, 'limits-outliers')
-        
         print(f'Hay {len(values)} valores atípicos')
         
-        
         # Histograma con todos los datos
-        plt.hist(values, bins=30, alpha=0.5)
+        plt.hist(array, bins=30, alpha=0.5)
         
         # Líneas límite
         for out in values:
@@ -110,7 +106,9 @@ def anormal_histogram_outlier(prj, var):
         # Configuración del gráfico
         plt.xlabel(var)
         plt.ylabel('Frecuencia')
-        plt.title(f'Histograma con detetección de outliers\npara: {var}')
+        title = f'Histograma con detetección de outliers para: {var}'
+        title = stiql(title, 52)
+        plt.title(title)
         plt.show()
         
         return values
@@ -123,10 +121,14 @@ def anormal_histogram_outlier(prj, var):
         # Configuración del gráfico
         plt.xlabel(var)
         plt.ylabel('Frecuencia')
-        plt.title(f'Histograma con detetección de outliers\npara: {var}')
+        title = f'Histograma con detetección de outliers para: {var}'
+        title = stiql(title, 52)
+        plt.title(title)
         plt.show()
         
         print("No hay valores atípicos")
+        
+        return None
 
 
 ## Para atípicos de una variable normal
@@ -141,32 +143,54 @@ def normal_histogram_outlier(array, umbral, var):
     
     ## Si no hay outliers, terminar
     if len(outliers) == 0:
-        mensaje = f"Con un umbral de {umbral} no hay atípicos,\n"
-        mensaje += "para subir el detalle de detección baje el\n"
+        
+        ## Histograma de variable normal sin atípicos
+        plt.hist(array, bins=30, alpha=0.5)
+        
+        ## Configuración del gráfico
+        plt.xlabel(var)
+        plt.ylabel('Frecuencia')
+        title = f'Histograma para: {var}'
+        title = stiql(title, 52)
+        plt.title(title)
+        
+        ## Mostrar gráfico
+        plt.show()
+        
+        ## Mensaje explicativo
+        mensaje = f"Con un umbral de {umbral} no hay atípicos, "
+        mensaje += "para subir el detalle de detección baje el"
         mensaje += "valor de 'umbral'"
+        stiql(mensaje, 60)
         
         print(mensaje)
+        
+        return None
     
     # Cuando hay outliers
     else:
         
         from .cluster import simpleKMeans
         
-        print(f'Hay {len(outliers)} valores atípicos, son:\n{outliers}')
+        print(f'Hay {len(outliers)} valores atípicos')
         
         ## Determina límites
         limits = simpleKMeans(outliers, 'limits-outliers')
         
         plt.figure(1)
-        plt.hist(outliers, bins=30, alpha=0.5)
+        plt.hist(array, bins=30, alpha=0.5)
         
         for limit in limits:
             plt.axvline(x=limit, color='red', linestyle='--')
-            
+        
+        ## Configuración del gráfico
         plt.xlabel(var)
         plt.ylabel('Frecuencia')
-        plt.title(f'Histograma con detetección de outliers\npara: {var}')
+        title = f'Histograma con detetección de outliers para: {var}'
+        title = stiql(title, 52)
+        plt.title(title)
         
+        ## Mostrar gráfico
         plt.show()
         
         return outliers

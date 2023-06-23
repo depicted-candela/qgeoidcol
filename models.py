@@ -8,6 +8,8 @@ Created on Thu Jun  1 19:43:42 2023
 
 from pandas.core.frame import DataFrame as pdf
 
+from .string_tools import split_text_in_equal_lines as stiql
+
 from .graphs import anormal_histogram_outlier, normal_histogram_outlier
 from .statistics import normality
 
@@ -146,6 +148,9 @@ class Project:
         
         plt.figure(2)
         plt.scatter(x, y, s=0.1)
+        plt.axis('equal')
+        print(min(x), max(x))
+        plt.xlim(min(x), max(x))
         plt.xlabel('X')
         plt.ylabel('Y')
         
@@ -162,11 +167,16 @@ class Project:
             out_x = [coord.x for coord in out_coords]
             out_y = [coord.y for coord in out_coords]
             
-            plt.scatter(out_x, out_y, s=1, c='red')
-            plt.title(f"Coordenadas con outliers\npara {var} de {self.file}")
+            plt.scatter(out_x, out_y, s=10, c='red')
+            title = f"Coordenadas con outliers para {var} de {self.file}"
+            title = stiql(title, 52)
+            plt.title(title)
         
         else:
             
+            ## Si no hay outliers, el mapa lo confirma
+            title = f"Coordenadas para {self.file}"
+            title = stiql(title, 52)
             plt.title(f"Coordenadas para\n{self.file}")
         
         plt.show()
@@ -299,7 +309,24 @@ class Project:
         
         else:
             return l_kwargs
-
+    
+    
+    ## Para reducir tamaño de histogram_outlier
+    def histogram_xy_plot(self, outliers, var):
+        
+        # Si no hay outliers
+        if outliers is None:
+            
+            self.plot_coordinates(self)
+            
+            return None
+        
+        else:
+            
+            self.plot_coordinates(self, outliers, var)
+        
+            return outliers
+    
     
     ## Para detectar outliers dada una variable y un dataframe base
     def histogram_outlier(self, **kwargs):
@@ -333,7 +360,11 @@ class Project:
         ## Para detectar outliers con media o SVM
         # Media
         if normality(array):
+            
+            # Detecta outliers de una variable normal
             outliers = normal_histogram_outlier(array, umbral, var)
+            
+            return self.histogram_xy_plot(outliers, var)
             
         # SVM
         else:
@@ -341,17 +372,9 @@ class Project:
             # Detecta outliers de una variable anormal
             outliers = anormal_histogram_outlier(self, var)
             
-            # Si no hay outliers
-            if outliers is None:
-                
-                self.plot_coordinates(self)
-            
-            else:
-                
-                self.plot_coordinates(self, outliers, var)
-            
-            return outliers
-    
+            return self.histogram_xy_plot(outliers, var)
+        
+        
     ## Para detectar outliers dada una variable y un dataframe base
     def boxcox_outlier(self, **kwargs):
         

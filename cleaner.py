@@ -194,7 +194,6 @@ def levelling_gravity_intersect(**kwargs):
         pass
     
     ## Para verificar que objetos sean de la clase Project
-    print(type(prj1), type(prj2), Project)
     if type(prj1) == type(prj2) == Project:
         pass
     else:
