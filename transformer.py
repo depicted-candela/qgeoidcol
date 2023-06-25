@@ -6,7 +6,8 @@ Created on Wed May 31 10:12:01 2023
 @author: nicalcoca
 """
 
-import os, argparse
+import os
+# import argparse
 import pandas as pd
 
 
@@ -38,21 +39,21 @@ def feet_meters(feet):
     
     return feet/3.2808
 
-if __name__ == '__main__':
+# if __name__ == '__main__':
     
-    parser = argparse.ArgumentParser()
-    parser.add_argument('--dt', type=str, help='Directorio de trabajo')
+#     parser = argparse.ArgumentParser()
+#     parser.add_argument('--dt', type=str, help='Directorio de trabajo')
     
-    parser.add_argument('--ai', type=str, help='Archivo de entrada')
+#     parser.add_argument('--ai', type=str, help='Archivo de entrada')
     
-    parser.add_argument('--v', type=str, help='Variable a limpiar')
+#     parser.add_argument('--v', type=str, help='Variable a limpiar')
     
-    help_ao='Archivo de salida dentro del directorio de trabajo'
-    parser.add_argument('--ao', type=str, help=help_ao)
+#     help_ao='Archivo de salida dentro del directorio de trabajo'
+#     parser.add_argument('--ao', type=str, help=help_ao)
     
-    args = parser.parse_args()
-    result = transforming(args.dt, args.ai, args.v, args.ao)
+#     args = parser.parse_args()
+#     result = transforming(args.dt, args.ai, args.v, args.ao)
     
-    print(result)
+#     print(result)
     
     

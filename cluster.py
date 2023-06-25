@@ -12,7 +12,7 @@ from numpy import where, take
 ## Para segmentar en dos un array unidimensional (array), el resultado depende
 ## de la necesidad
 
-def simpleKMeans(array, todo):
+def simpleKMeans(array, todo='limit-outliers'):
     
     ## Si es para conocer los valores límites superiores
     ## e inferiores de un conjunto de outliers
@@ -34,8 +34,6 @@ def simpleKMeans(array, todo):
         maxis = take(array, zeros)
         minus =  take(array, ones)
         limits = [min(minus), max(minus), min(maxis), max(maxis)]
-        
-        print(limits)
         
         return limits
     

@@ -6,7 +6,7 @@ Created on Thu Jun  1 20:45:18 2023
 @author: nicalcoca
 """
 
-from .models import Project
+from .models import Project, RawProject
 
 import pandas as pd
 import geopandas as gpd
@@ -15,7 +15,7 @@ import os
 
 ## Lector de archivos de gravimetría y altimetría
 def reader(wd, file, tipo, aggregator=None):
-
+    
     file_name, file_ext = os.path.splitext(file)
     
     os.chdir(wd)
@@ -36,5 +36,13 @@ def reader(wd, file, tipo, aggregator=None):
         
         return 'Formato no soportado'
     
-    ## Crea objeto de clase Proyecto
-    return Project(file, df, tipo)
+    match tipo:
+        
+        ## Para objetos de clase Proyecto
+        case 'nivelacion'|'gravedad-absoluta'|'gravedad-relativa'|'gravedades':
+            return Project(file, df, tipo)
+    
+        ## Para objetos de clase RawProject
+        case 'crudo':
+            return RawProject(file, df, tipo)
+    
