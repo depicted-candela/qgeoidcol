@@ -6,12 +6,11 @@ Created on Wed May 31 09:16:51 2023
 @author: nicalcoca
 """
 
+from .models import Project, GrvLvlProject
+
 import os, argparse
 import pandas as pd
 import copy
-
-from .models import Project, GrvLvlProject
-
 
 # Para limpiar ruido de una variable de un archivo csv
 def cleaning_csv(wd, file, var, output=None, minor=None, major=None,
@@ -36,12 +35,12 @@ def cleaning_csv(wd, file, var, output=None, minor=None, major=None,
     if save != None:
         
         clean_df.to_csv(output, sep=',')
+        return f'Save to {wd}/{output}'
     
     else:
         
         return clean_df
-    
-    return f'Save to {wd}/{output}'
+
 
 
 ## Unir gravedad absoluta y relativa
@@ -55,8 +54,7 @@ def join_gravities(*args):
     if check_class(args):
         
         files = join_files(_args)
-        
-        data = join_df(_args)
+        data = join_df_horizontal(_args)
         
         """Crea el objeto Project de gravedades absolutas
         y relativas unidas"""
@@ -64,6 +62,7 @@ def join_gravities(*args):
         joined_gravs = Project(files, data, 'gravedades')
         
         return joined_gravs
+
 
 ## Para unir nombres de archivos
 def join_files(fs):
@@ -75,8 +74,9 @@ def join_files(fs):
         
     return files.rstrip()
 
+
 ## Para unir data frames
-def join_df(datas):
+def join_df_horizontal(datas):
     
     ## dataframe nuevo para almacenar
     data = pd.DataFrame({'ID': [], 'GEOM': [], 'GRAV': []})
@@ -90,6 +90,7 @@ def join_df(datas):
             data = pd.concat([data, _data], axis=0)
         
     return data
+
 
 ## Para verificar que objetos sean de la clase Project
 def check_class(*args):
@@ -168,7 +169,6 @@ def intersects(*args):
 
 
 # Para organizar y depurar conjuntamente nivelación y gravedad.
-
 def levelling_gravity_intersect(**kwargs):
 
     """

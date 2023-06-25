@@ -6,30 +6,35 @@ Created on Thu Jun  1 20:59:57 2023
 @author: nicalcoca
 """
 
+from metpy import interpolate as interp
+
 from .string_tools import split_text_in_equal_lines as stiql
 
 import matplotlib.pyplot as plt
 import numpy as np
-import copy
+import pandas as pd
 
-## Código implementado con ayuda de ChatGPT-4: openai
 
 # Gráfico de todas las líneas
-def values_per_lines(proj, var_name):
+def values_per_group(proj, var_name):
     
     df = proj.df
     aggr = proj.aggregator
     
-    grpd_data = df.groupby(aggr)[var_name].apply(list).to_dict()
+    ## Para determinar agregador
+    if aggr in df.columns:
+        grpd_data = df.groupby([aggr])[var_name].apply(list).to_dict()
+    else:
+        raise ValueError("Primero determine la variable agregadora con instance.aggregator_group('variable agregadora')")
     
     # Plotting the graph
     for key, values in grpd_data.items():
         plt.plot(values, label=key)
     
     # Customize the plot
-    plt.xlabel('X-axis')
-    plt.ylabel('Y-axis')
-    plt.title('Graph with Dictionary Values')
+    plt.xlabel('X')
+    plt.ylabel(f'{var_name}')
+    plt.title('Todos los grupos')
     plt.legend()
     
     # Display the plot
@@ -37,13 +42,19 @@ def values_per_lines(proj, var_name):
 
 
 # Gráfico de diez líneas
-def values_per_lines_limited(project, var_name, start_line, end_line):
+def values_per_group_limited(project, var_name, start, end):
     
     df = project.df
     aggr = project.aggregator
+    grps = project.groups
     
-    grpd_data = df.groupby(aggr)[var_name].apply(list).to_dict()
-    keys = list(grpd_data.keys())[start_line: end_line]
+    ## Para confirmar agregador
+    if aggr in df.columns:
+        grpd_data = df.groupby([aggr])[var_name].apply(list).to_dict()
+    else:
+        raise ValueError("Primero determine la variable agregadora con instance.aggregator_group('variable agregadora')")
+        
+    keys = list(grpd_data.keys())[start: end]
     subset_dict = {key: grpd_data[key] for key in keys if key in grpd_data}
     
     # Plotting the graph
@@ -51,12 +62,67 @@ def values_per_lines_limited(project, var_name, start_line, end_line):
         plt.plot(values, label=key)
     
     # Customize the plot
-    plt.xlabel('observaciones')
-    plt.ylabel('metros')
-    plt.title('Altimetría de radar por línea')
+    plt.xlabel('obs')
+    plt.ylabel(f'{var_name}')
+    plt.title(f'Grupos desde {start} hasta {end} de {len(grps)}')
     plt.legend(loc='center left', bbox_to_anchor=(1, 0.5))
     
     # Display the plot
+    plt.show()
+
+
+def natural_neighbor(prj, **kwargs):
+    
+    variable = kwargs['var']
+    try:
+        avoid = kwargs['avoid']
+    except:
+        avoid = None
+    
+    df = prj.df
+    
+    not_null_variable = df[df[variable] != avoid]
+    clean_variable = not_null_variable[['GEOM', variable]]
+    
+    ## Extracción de valores del dataframe
+    LAT = np.array(df['GEOM'].apply(lambda point: point.y))
+    LONG = np.array(df['GEOM'].apply(lambda point: point.x))
+    
+    variable_num = clean_variable[[variable]]
+    variable_num = np.array([i[0] for i in variable_num.values])
+    
+    # Define the grid to interpolate Into
+    LATi = np.linspace(min(LAT), max(LAT), 100)
+    LONGi = np.linspace(min(LONG), max(LONG), 100)
+    LONGi, LATi = np.meshgrid(LONGi, LATi)
+    
+    
+    # Interpolate data onto the grid using Natural Neighbor interpolation
+    variable_intplt = interp.natural_neighbor_to_grid(LONG,
+                                                      LAT,
+                                                      variable_num,
+                                                      LONGi,
+                                                      LATi)
+    
+    ## A float
+    variable_intplt = np.array(variable_intplt, dtype=float)
+    
+    # Create a plot
+    fig, ax = plt.subplots()
+    im = ax.imshow(variable_intplt, extent=[min(LONG), max(LONG), min(LAT),
+                                       max(LAT)],
+              origin='lower', cmap='viridis')
+    
+    # Set the scales of the x and y axes to be the same
+    ax.set_xlim([min(LONG), max(LONG)])
+    ax.set_ylim([min(LAT), max(LAT)])
+    plt.axis('equal')
+    plt.colorbar(im, extend='both')
+    
+    # Add a title
+    ax.set_title(f'Interpolación de {variable} con Vecinos Naturales')
+    
+    # Show the plot
     plt.show()
 
 
@@ -64,19 +130,19 @@ def values_per_lines_limited(project, var_name, start_line, end_line):
 def anormal_histogram_outlier(prj, var):
     
     subdf = prj.df[[var, 'GEOM']]
-    valuesdf = prj.df[var]
+    array = np.array(prj.df[var])
     
     ## Extracción de valores del dataframe
-    x = copy.deepcopy(np.array(subdf['GEOM'].apply(lambda point: point.x)))
-    y = copy.deepcopy(np.array(subdf['GEOM'].apply(lambda point: point.y)))
-    
-    subdf.loc[:,'x'] = x
-    subdf.loc[:,'y'] = y
+    x = np.array(subdf['GEOM'].apply(lambda point: point.x))
+    y = np.array(subdf['GEOM'].apply(lambda point: point.y))
 
     del subdf['GEOM']
     
-    array3d = np.array(subdf)
-    array = np.array(valuesdf).reshape(-1, 1)
+    ## Creación de nuevo dataframe para prevenir warnings
+    newdf = pd.DataFrame({'x': x, 'y': y, var: array})
+    
+    array3d = np.array(newdf)
+    array = array.reshape(-1, 1)
     
     # Paquete para One-class SVM detector
     from pyod.models.ocsvm import OCSVM
