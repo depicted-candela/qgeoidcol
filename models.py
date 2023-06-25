@@ -13,6 +13,7 @@ from .string_tools import split_text_in_equal_lines as stiql
 from .graphs import anormal_histogram_outlier, normal_histogram_outlier
 from .statistics import normality
 
+from metpy import interpolate as interp
 import matplotlib.pyplot as plt
 import numpy as np
 
@@ -122,11 +123,64 @@ class Project:
         return f"{self.file}"
     
     
+    ## Interpolación rápida, vecinos naturales
+    def natural_neighbor(self, **kwargs):
+        
+        variable = kwargs['var']
+        try:
+            avoid = kwargs['avoid']
+        except:
+            avoid = None
+        
+        df = self.df
+        
+        not_null_variable = df[df[variable] != avoid]
+        clean_variable = not_null_variable[['GEOM', variable]]
+        
+        ## Extracción de valores del dataframe
+        LAT = np.array(df['GEOM'].apply(lambda point: point.y))
+        LONG = np.array(df['GEOM'].apply(lambda point: point.x))
+        
+        variable_num = clean_variable[[variable]]
+        variable_num = np.array([i[0] for i in variable_num.values])
+        
+        # Define the grid to interpolate Into
+        LATi = np.linspace(min(LAT), max(LAT), 100)
+        LONGi = np.linspace(min(LONG), max(LONG), 100)
+        LONGi, LATi = np.meshgrid(LONGi, LATi)
+        
+        
+        # Interpolate data onto the grid using Natural Neighbor interpolation
+        variable_intplt = interp.natural_neighbor_to_grid(LONG,
+                                                          LAT,
+                                                          variable_num,
+                                                          LONGi,
+                                                          LATi)
+        ## A float
+        variable_intplt = np.array(variable_intplt, dtype=float)
+        
+        # Create a plot
+        fig, ax = plt.subplots()
+        im = ax.imshow(variable_intplt, extent=[min(LONG), max(LONG), min(LAT),
+                                           max(LAT)],
+                  origin='lower', cmap='viridis')
+        
+        # Set the scales of the x and y axes to be the same
+        ax.set_xlim([min(LONG), max(LONG)])
+        ax.set_ylim([min(LAT), max(LAT)])
+        plt.axis('equal')
+        plt.colorbar(im, extend='both')
+        
+        # Add a title
+        ax.set_title(f'Interpolación de {variable} con Vecinos Naturales')
+        
+        # Show the plot
+        plt.show()
+    
+    
     ## Gráfico para observar coordenadas
     def plot_coordinates(self, *args):
-        """
-        
-
+        """f
         Parametros
         ----------
         *args : no ingresar si utiliza la función directamente
@@ -140,17 +194,14 @@ class Project:
 
         """
         
-        
         coords = self.df.GEOM.to_list()
         
         x = [coord.x for coord in coords]
         y = [coord.y for coord in coords]
         
-        plt.figure(2)
+        fig, ax = plt.subplots()
         plt.scatter(x, y, s=0.1)
         plt.axis('equal')
-        print(min(x), max(x))
-        plt.xlim(min(x), max(x))
         plt.xlabel('X')
         plt.ylabel('Y')
         
@@ -406,15 +457,96 @@ class Project:
         plt.ylabel('Frecuencia')
         plt.title(f'Box-Cox para: {var}')
         plt.show()
+
+class RawProject(Project):
     
+    ## Tipos válidos
+    VALID_TYPES = ['crudo']
     
-    ## Para mostrar espacialmente los outliers
+    ## Define el agregador como propiedad del objeto
+    @property
+    def df(self):
+        return self._Project__df
+    
+    ## Define archivo como propiedad del objeto
+    @property
+    def file(self):
+        return self._Project__file
+    
+    # Define el tipo como propiedad del objecto
+    @property
+    def tipo(self):
+        return self._Project__tipo
+    
+    ## Methods to avoid
+    def cleaning_var():
+        pass
+    def __cleaning_absolute_relative_gravity():
+        pass
+    def __cleaning_levelling():
+        pass
+    
+    # Gráfico de todas las líneas
+    def values_per_group(self, var_name):
+        
+        df = self.df
+        aggr = self.aggregator
+        
+        ## Para determinar agregador
+        if aggr in df.columns:
+            grpd_data = df.groupby([aggr])[var_name].apply(list).to_dict()
+        else:
+            raise ValueError("Primero determine la variable agregadora con instance.aggregator_group('variable agregadora')")
+        
+        # Plotting the graph
+        for key, values in grpd_data.items():
+            plt.plot(values, label=key)
+        
+        # Customize the plot
+        plt.xlabel('X')
+        plt.ylabel(f'{var_name}')
+        plt.title('Todos los grupos')
+        plt.legend()
+        
+        # Display the plot
+        plt.show()
+    
+    # Gráfico de diez líneas
+    def values_per_group_limited(self, var_name, start, end):
+        
+        df = self.df
+        aggr = self.aggregator
+        grps = self.groups
+        
+        ## Para confirmar agregador
+        if aggr in df.columns:
+            grpd_data = df.groupby([aggr])[var_name].apply(list).to_dict()
+        else:
+            raise ValueError("Primero determine la variable agregadora con instance.aggregator_group('variable agregadora')")
+            
+        keys = list(grpd_data.keys())[start: end]
+        subset_dict = {key: grpd_data[key] for key in keys if key in grpd_data}
+        
+        # Plotting the graph
+        for key, values in subset_dict.items():
+            plt.plot(values, label=key)
+        
+        # Customize the plot
+        plt.xlabel('obs')
+        plt.ylabel(f'{var_name}')
+        plt.title(f'Grupos desde {start} hasta {end} de {len(grps)}')
+        plt.legend(loc='center left', bbox_to_anchor=(1, 0.5))
+        
+        # Display the plot
+        plt.show()
     
     
 class GrvLvlProject(Project):
     
-    
+    ## Tipos válidos
     VALID_TYPES = ['nivelacion-gravedades-intersectado']
+    
+    ## Métodos válidos
     METODO_CALCULO = ['nomenclatura', 'coordenadas']
     
     ## Valores inicializadores
@@ -448,7 +580,6 @@ class GrvLvlProject(Project):
         self.__aggregator = None
         self.__groups = None
     
-    
     ## Define el agregador como propiedad del objeto
     @property
     def df(self):
@@ -464,7 +595,7 @@ class GrvLvlProject(Project):
     def tipo(self):
         return self._GrvLvlProject__tipo
     
-    
+    ## Methods to avoid
     def cleaning_var():
         pass
     def __cleaning_absolute_relative_gravity():
