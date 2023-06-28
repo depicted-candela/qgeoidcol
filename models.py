@@ -264,28 +264,99 @@ class Project:
         
         self.__df = clean_df
     
-    ## Para estandarizar nivelación
-    @classmethod
-    def __cleaning_levelling(cls, instance, _id, geom, var):
-
-        clean_df = instance.df.rename(columns={_id: 'ID',
-                                               geom: 'GEOM',
-                                               var: 'ALTURA_M_S'})
+    
+    ## geometria puntual de variables
+    def __pointed_lev(instance, _vars):
+        
+        from shapely.geometry import Point
+        import pandas as pd
+        
+        ## Selecciona columnas x y y
+        geom_array = np.array(instance.df[list(_vars[1:3])])
+        
+        ## Transforma valores x y y a coordenadas
+        points = [Point(ga[0], ga[1]) for ga in geom_array]
+        _id = instance.df[_vars[0]]
+        var = instance.df[_vars[-1]]
+        
+        ## Data frame limpio
+        points_df = pd.DataFrame({'ID': _id, 'GEOM': points,
+                                  'ALTURA_M_S': var})
+        
+        return points_df
+    
+    
+    ## geometría puntual de shapefile
+    def __geometred_lev(instance, _vars):
+        
+        clean_df = instance.df.rename(columns={_vars[0]: 'ID',
+                                               _vars[1]: 'GEOM',
+                                               _vars[2]: 'ALTURA_M_S'})
         clean_df = clean_df[['ID', 'GEOM', 'ALTURA_M_S']]
         
         return clean_df
     
     
-    ## Para estandarizar gravimetría absoluta o 
-    @classmethod
-    def __cleaning_absolute_relative_gravity(cls, instance, _id, geom, var):
+    ## geometria puntual de variables
+    def __pointed_grv(instance, _vars):
         
-        clean_df = instance.df.rename(columns={_id: 'ID',
-                                               geom: 'GEOM',
-                                               var: 'GRAV'})
+        from shapely.geometry import Point
+        import pandas as pd
+        
+        ## Selecciona columnas x y y
+        geom_array = np.array(instance.df[list(_vars[1:3])])
+        
+        ## Transforma valores x y y a coordenadas
+        points = [Point(ga[0], ga[1]) for ga in geom_array]
+        _id = instance.df[_vars[0]]
+        var = instance.df[_vars[-1]]
+        
+        ## Data frame limpio
+        points_df = pd.DataFrame({'ID': _id, 'GEOM': points,
+                                  'GRAV': var})
+        
+        return points_df
+    
+    
+    ## geometría puntual de shapefile
+    def __geometred_grv(instance, _vars):
+        
+        clean_df = instance.df.rename(columns={_vars[0]: 'ID',
+                                               _vars[1]: 'GEOM',
+                                               _vars[2]: 'GRAV'})
         clean_df = clean_df[['ID', 'GEOM', 'GRAV']]
         
         return clean_df
+    
+    
+    ## Para estandarizar nivelación
+    @classmethod
+    def __cleaning_levelling(cls, instance, _vars):
+        
+        lvars = len(_vars)
+        
+        if lvars == 3:
+            
+            return cls.__geometred_lev(instance, _vars)
+        
+        elif lvars == 4:
+
+            return cls.__pointed_lev(instance, _vars)
+    
+    
+    ## Para estandarizar gravimetría absoluta o 
+    @classmethod
+    def __cleaning_absolute_relative_gravity(cls, instance, _vars):
+        
+        lvars = len(_vars)
+        
+        if lvars == 3:
+            
+            return cls.__geometred_grv(instance, _vars)
+        
+        elif lvars == 4:
+            
+            return cls.__pointed_grv(instance, _vars)
 
     
     ## Para limpiar variables no necesarias
@@ -295,42 +366,100 @@ class Project:
         _args = list(args)
         
         ## Comprueba validez de parámetros
-        if (len(_args) != 3):
-            
-            error = """La lista de argumentos proveídos en la función
-            y en el dataframe deben seguir el orden:
-            - nivelación: nomenclatura (id), geometria,
-            altura_sobre_el_nivel_del_mar
-            - gravedades absolutas o relativas: nomenclatura (id),
-            geometria, gravedad (mGals)
-            """
-            raise ValueError(error)
-        
-        ## Para extraer argumentos
-        _id = _args[0]
-        geom = _args[1]
-        var = _args[2]
+        toclean_vars = self.df_vars(_args)
         
         ## Variable para utilizar función para gravedad o nivelación
         tipo = self.tipo
         
         if tipo == 'nivelacion':
             
-            df = self.__cleaning_levelling(self, _id, geom,  var)
+            df = self.__cleaning_levelling(self, toclean_vars)
             self.set_df_file_tipo(df, self.file, self.tipo)
         
         elif tipo == 'gravedad-absoluta' or tipo == 'gravedad-relativa':
             
-            df = self.__cleaning_absolute_relative_gravity(self, _id, geom,  var)
+            df = self.__cleaning_absolute_relative_gravity(self, toclean_vars)
             self.set_df_file_tipo(df, self.file, self.tipo)
         
         elif tipo == 'gravedades':
             
-            raise ValueError(f'Aún no se establece rutina para limpiar archivo de tipo {tipo}')
+            raise ValueError(f'Aún no se establece rutina para limpiar por variable archivo de tipo {tipo}')
         
         else:
             
             raise ValueError('No han sido proporcionados tipos de datos válidos')
+    
+    ## Mensage de ilustrativo
+    def df_vars_message():
+        
+        """
+        
+        
+        Returns
+        -------
+        Mensaje.
+
+        """
+        
+        
+        return """La lista de argumentos proveídos en la función
+        y en el dataframe deben seguir el orden:
+            
+        i. Si las coordenadas provienen de la geometría de un shapefile o
+        geopackage
+            - nivelación: nomenclatura (id), geometria,
+            altura_sobre_el_nivel_del_mar (m)
+            - gravedades absolutas o relativas: nomenclatura (id),
+            geometria, gravedad (mGals)
+        ii. Si las coordenadas provienen de variables de shapefile,
+        geopackage o csv
+            - nivelación: nomenclatura (id), x, y,
+            altura_sobre_el_nivel_del_mar (m)
+            - gravedades absolutas o relativas: nomenclatura (id), x, y
+            gravedad (mGals)
+            """
+    
+    ## Par de coordenadas a puntos
+    def pointed(self, args):
+        
+        _id = args[0]
+        x = args[1]
+        y = args[2]
+        var = args[3]
+        
+        return _id, x, y, var
+    
+    ## Punto geometrizado
+    def geometred(self, args):
+        
+        _id = args[0]
+        geom = args[1]
+        var = args[2]
+        
+        return _id, geom, var
+    
+    
+    ## Creador de variables
+    def df_vars(self, args):
+        
+        _args = list(args)
+        _largs = len(_args)
+        
+        ## Comprueba validez de parámetros
+        if _largs not in [3, 4]:
+            
+            ## Mensaje ilustrativo
+            self.df_vars_message()
+        
+        ## Geometría desde shapefile
+        elif _largs == 3:
+            
+            return self.geometred(_args)
+        
+        ## Geometría desde par de variables
+        else:
+            
+            return self.pointed(_args)
     
     
     ## Condiciones para funciones de detección de outliers
@@ -403,7 +532,7 @@ class Project:
         umbral = 3
         
         if lkwargs == 2:
-            umbral  = kwargs['umbral']
+            umbral = kwargs['umbral']
         
         ## Extracción de valores del dataframe
         array = np.array(self.df[var])
@@ -570,8 +699,8 @@ class GrvLvlProject(Project):
             
         ## Para validar tipo de proyecto
         if metodo in self.METODO_CALCULO:
-            print(f"Inicializando objeto de {tipo}")
-            self.__tipo = tipo
+            print(f"Inicializando objeto de {tipo} con metodo {metodo}")
+            self.__metodo = metodo
             
         else:
             raise ValueError(f"Valores válidos para tipo son: {', '.join(self.METODO_CALCULO)}")
@@ -595,6 +724,11 @@ class GrvLvlProject(Project):
     def tipo(self):
         return self._GrvLvlProject__tipo
     
+    # Define el método como propiedad del objecto
+    @property
+    def metodo(self):
+        return self._GrvLvlProject__metodo
+    
     ## Methods to avoid
     def cleaning_var():
         pass
@@ -602,4 +736,71 @@ class GrvLvlProject(Project):
         pass
     def __cleaning_levelling():
         pass
+
+
+class GrvLvlCorrProject(Project):
     
+    ## Tipos válidos
+    VALID_TYPES = ['nivelacion-gravedades-intersectado-correcciones']
+    
+    ## Métodos válidos
+    METODO_CALCULO = ['nomenclatura', 'coordenadas']
+    
+    ## Valores inicializadores
+    def __init__(self, file, df, tipo, metodo):
+        
+        # Para validar tipos de formato de objetos de entrada
+        cond1 = type(file) == str
+        cond2 = type(df) == pdf
+        cond3 = type(tipo) == str
+        cond4 = type(metodo) == str
+        
+        if cond1 and cond2 and cond3 and cond4:
+            self.__file = file
+            self.__df = df
+        
+        ## Para validar tipo de proyecto
+        if tipo in self.VALID_TYPES:
+            self.__tipo = tipo
+        else:
+            raise ValueError(f"Valores válidos para tipo son: {', '.join(self.VALID_TYPES)}")
+            
+        ## Para validar tipo de proyecto
+        if metodo in self.METODO_CALCULO:
+            print(f"Inicializando objeto de {tipo} con metodo {metodo}")
+            self.__metodo = metodo
+            
+        else:
+            raise ValueError(f"Valores válidos para tipo son: {', '.join(self.METODO_CALCULO)}")
+        
+        ## Para crear grupos basados en el agregador
+        self.__aggregator = None
+        self.__groups = None
+    
+    ## Define el agregador como propiedad del objeto
+    @property
+    def df(self):
+        return self._GrvLvlCorrProject__df
+    
+    ## Define archivo como propiedad del objeto
+    @property
+    def file(self):
+        return self._GrvLvlCorrProject__file
+    
+    # Define el tipo como propiedad del objecto
+    @property
+    def tipo(self):
+        return self._GrvLvlCorrProject__tipo
+    
+    # Define el método como propiedad del objecto
+    @property
+    def metodo(self):
+        return self._GrvLvlCorrProject__metodo
+    
+    ## Methods to avoid
+    def cleaning_var():
+        pass
+    def __cleaning_absolute_relative_gravity():
+        pass
+    def __cleaning_levelling():
+        pass

@@ -142,6 +142,7 @@ def anormal_histogram_outlier(prj, var):
     newdf = pd.DataFrame({'x': x, 'y': y, var: array})
     
     array3d = np.array(newdf)
+    
     array = array.reshape(-1, 1)
     
     # Paquete para One-class SVM detector
