@@ -10,27 +10,52 @@ from boule import GRS80
 
 class GRS_80:
     
-    _dict = dict()
+    # _dict = dict()
     
-    def __new__(cls):
+    # def __new__(cls):
         
-        if 'key' in GRS80._dict:
+    #     if 'grs80' in GRS_80._dict:
             
-            print(f'Existan ya parámetros para el Elipsoide {cls}')
+    #         print(f'Existan ya parámetros para el Elipsoide {cls}')
         
-        else:
+    #     else:
             
-            print(f'Nueva instancia para Elipsoide {cls}')
-            return super(GRS80, cls).__new__(cls)
-            
+    #         print(f'Nueva instancia para Elipsoide {cls}')
+    #         return super(GRS_80, cls).__new__(cls)
+    
     def __init__(self):
         
         print(f'Inicializando instancia para Elipsoide {self}')
         
-        A = GRS80.semimajor_axis
-        B = GRS80.semiminor_axis
-        F = GRS80.flattening
-        M = ((GRS80.angular_velocity**2)*(A**2)*(B))/(GRS80.geocentric_grav_const)
+        self._A = GRS80.semimajor_axis
+        self._B = GRS80.semiminor_axis
+        self._F = GRS80.flattening
+        self._M = ((GRS80.angular_velocity**2)*(self.A**2)*(self.B))/(GRS80.geocentric_grav_const)
+        self._GE = GRS80.gravity_equator
+        self._GP = GRS80.gravity_pole
         
-        GRS80._dict['key'] = self
-        print("")
+        # GRS_80._dict['grs80'] = self
+
+    @property
+    def A(self):
+        return self._A
+    
+    @property
+    def B(self):
+        return self._B
+    
+    @property
+    def F(self):
+        return self._F
+    
+    @property
+    def M(self):
+        return self._M
+    
+    @property
+    def GE(self):
+        return self._GE
+    
+    @property
+    def GP(self):
+        return self._GP
