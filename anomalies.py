@@ -18,7 +18,8 @@ class Correcciones:
 
     """
     Clase calculadora de correcciones de gravedad
-    """    
+    """
+    
     def corregir(self, df, prj):
         
         corrector = get_corrector(prj)
@@ -32,6 +33,7 @@ class Correcciones:
 
 
 def get_corrector(prj):
+    
     """
     TRAE LAS CORRECCIONES
 
@@ -42,10 +44,11 @@ def get_corrector(prj):
 
     Returns
     -------
-    TYPE
-        DESCRIPTION.
+    pandas.core.frame.DataFrame
+        DATA FRAME DEL PROYECTO TERRESTRE MÁS CORRECCIONES.
 
     """
+    
     if isinstance(prj, GrvLvlProject):
         return _correccion_proyectos_terrestres
     else:
@@ -67,6 +70,7 @@ def _data_elip_terreno():
 
 
 def _correccion_proyectos_terrestres(df):
+    
     """
     PARA CALCULAR ANOMALÍAS DE PROYECTOS TERRESTRES.
 
@@ -107,6 +111,7 @@ def _correccion_proyectos_terrestres(df):
     
 
 def geom_phi(geom):
+    
     """
     Para pasar de Point a latitud
 
@@ -125,6 +130,7 @@ def geom_phi(geom):
 
 
 def grados_radianes(lat):
+    
     """
     De grados a radianes
 
@@ -143,6 +149,7 @@ def grados_radianes(lat):
 
 
 def somigliana_numerador(radphi, gp, a, b, ge):
+    
     """
     Numerador de ecuación Somigliana
 
