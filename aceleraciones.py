@@ -17,10 +17,12 @@ class Aceleraciones:
     
     """
     Clase calculadora de aceleraciones
+    PRueba
     """
     
     def acelerar(self, df, prj, metodo, pos='ADJ_ALT', time='TIME'):
         
+        print("ey")
         acelerador = get_aceleraciones(prj)
         df_con_acc = acelerador(prj, prj.df, metodo, pos, time)
         
