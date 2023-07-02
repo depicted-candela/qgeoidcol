@@ -587,6 +587,7 @@ class Project:
         plt.title(f'Box-Cox para: {var}')
         plt.show()
 
+
 class RawProject(Project):
     
     ## Tipos válidos
@@ -669,7 +670,16 @@ class RawProject(Project):
         # Display the plot
         plt.show()
     
+
+class AeroRawProject(RawProject):
     
+    """Clase para proyectos crudos de aerogravimetría"""
+    
+    ## Tipos válidos
+    VALID_TYPES = ['crudo-aereo']
+    
+
+
 class GrvLvlProject(Project):
     
     ## Tipos válidos
