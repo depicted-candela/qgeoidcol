@@ -19,13 +19,12 @@ class Aceleraciones:
     Clase calculadora de aceleraciones
     """
     
-    def calcular_aceleraciones(self, df, prj, tipo, alt='ADJ_ALT',
-                               vertacc='RAW_VERTACC', time='TIME'):
+    def acelerar(self, df, prj, metodo, pos='ADJ_ALT', time='TIME'):
         
         acelerador = get_aceleraciones(prj)
-        df_con_acc = acelerador(prj, prj.df, prj.tipo, kwargs['alt'],
-                                kwargs['vertacc'], kwargs['time'])
-    #### Terminar
+        df_con_acc = acelerador(prj, prj.df, metodo, pos, time)
+        
+        return prj.set_df_file_tipo(df_con_acc, prj.file, prj.tipo)
 
 def get_aceleraciones(prj):
     
@@ -45,135 +44,134 @@ def get_aceleraciones(prj):
     """
     
     if isinstance(prj, AeroRawProject):
-        return _aceleraciones_aerogravimetria
+        return _aceleracion_aerogravimetria
     
     else:
         raise ValueError("Tipo de proyecto no soportado")
 
 
-def _aceleraciones_aerogravimetria(prj, df, tipo, alt, vertacc, time):
+def _aceleracion_aerogravimetria(prj, df, metodo, pos, time):
     
     """
     PARA REGRESAR ACELERACIONES DE PROYECTOS AÉREOS
 
     Parameters
     ----------
+    prj : qgeoidcol.models.RawProject
+        PROYECTO A CALCULAR.
     df : pandas.core.frame.DataFrame
         DATA FRAME CON VARIABLES PARA ACELERACIONES CALCULAR.
+    metodo : string
+        YA SEA PARA horizontal O verticales.
+    pos : string
+        VARIABLE CON POSICION DE VUELO.
+    time : string
+        NOMBRE DE LA VARIABLE TEMPORAL.
+
+    Raises
+    ------
+    ValueError
+        MENSAJE DE ERROR POR MÉTODO DE ACELERACIÓN DESCONOCIDO.
 
     Returns
     -------
-    pandas.core.frame.DataFrame
+    pandas.core.frame.DataFrame.
+        DATAFRAME CON ACELERACIÓN CALCULADA
 
     """
+
+    try:
+        
+        groups = prj.groups
+        aggr = prj.aggregator
+        groups = prj.groups
+        
+    except:
+        
+        mensaje = "El objecto {prj} del archivo {prj.file} debe ser"
+        mensaje += "agregado por líneas, por ejemplo:   "
+        mensaje += "caguan_grav_hi.aggregator_group('LINE')"
+        mensaje = stiql(mensaje, 52)
+        
+        raise ValueError(mensaje)
     
     ## Para variar el comportamiento según el método
-    if tipo == 'vertical':
-        
-        try:
-            groups = prj.groups
-        except:
-            
-            mensaje = "El objecto {prj} del archivo {prj.file} debe ser"
-            mensaje += "agregado por líneas, por ejemplo:   "
-            mensaje += "caguan_grav_hi.aggregator_group('LINE')"
-            mensaje = stiql(mensaje, 52)
-            
-            raise ValueError(mensaje)
-        
-        aggr = prj.aggregator
-        subdf = df[time, alt, vertacc]
-        
-        acc_df = __aceleracion_aerogravimetria(subdf, alt, time, groups, aggr)
-        
-        return acc_df
-
+    ## Aceleración vertical
+    if metodo == 'vertical':
     
-def __aceleracion_aerogravimetria(subdf, alt, time, groups, aggr):
+        return __aceleracion(df, pos, time, groups, aggr, 'ACC_VERT')
     
-    """
-    PARA CALCULAR VELOCIDADES DE PROYECTOS AÉREOS
-
-    Parameters
-    ----------
-    subdf : pandas.core.frame.DataFrame
-        DATA FRAME CON VARIABLES PARA ACELERACIONES CALCULAR.
-    alt : string
-        NOMBRE DE LA VARIABLE PARA ALTURA.
-    time : string
-        NOMBRE DE LA VARIABLE PARA TIEMPO.
-    groups : lista de floats
-
-    Returns
-    -------
-    None.
-
-    """
+    ## Aceleración horizontal
+    elif metodo == 'horizontal_x':
+        
+        return __aceleracion(df, pos, time, groups, aggr, 'ACC_HOR_X')
     
-    ## Itera sobre grupos para extraer variables
-    for g in groups:
+    ## Aceleraciones horizontales
+    elif metodo == 'horizontal_y':
         
-        cols = subdf.columns
+        return __aceleracion(df, pos, time, groups, aggr, 'ACC_HOR_Y')
+    
+    ## Si método mal proporcionado
+    else:
         
-        
-        group_df = subdf[subdf[aggr] == g]
-        sex_time = group_df[time]
-        df_alt = group_df[alt]
-        
-        sec_time = __tiempo_utc_segundos(sex_time)
-        
-        e3 = group_df[alt].shift(periods=2)
-        e2 = group_df[alt].shift(periods=1)
-        e1 = group_df[alt]
-        
-        dt1 = group_df[time].shift(periods=1) - group_df[time]
-        dt2 = group_df[time].shift(periods=2) - group_df[time].shift(periods=1)
-        
-        acc = ((e3 - e2) - (e2 - e1))/(dt1 * dt2)
+        raise ValueError(f"No hay métodos para aceleracion {metodo}")
 
 
-def __aceleracion_aerogravimetria(subdf, alt, time, groups, aggr):
+def __aceleracion(df, pos, time, groups, aggr, acc):
     
     """
     PARA CALCULAR ACELERACIONES DE PROYECTOS AÉREOS
 
     Parameters
     ----------
-    subdf : pandas.core.frame.DataFrame
+    df : pandas.core.frame.DataFrame
         DATA FRAME CON VARIABLES PARA ACELERACIONES CALCULAR.
-    alt : string
-        NOMBRE DE LA VARIABLE PARA ALTURA.
+    pos : string
+        NOMBRE DE LA VARIABLE DE POSICION.
     time : string
-        NOMBRE DE LA VARIABLE PARA TIEMPO.
+        NOMBRE DE LA VARIABLE TEMPORAL.
     groups : lista de floats
+        AGRUPACIONES
+    aggr : string
+        VARIABLE AGREGADORA
+    acc : string
+        NOMBRE DE VARIABLE DE NUEVA VARIABLE DE ACELERACIÓN
 
     Returns
     -------
-    None.
-
+    pandas.core.frame.DataFrame.
+        DATAFRAME CON ACELERACIÓN CALCULADA
+        
     """
     
     array_list = []
     
     ## Itera sobre grupos para extraer variables
     for g in groups:
-    
-        group_df = subdf[subdf[aggr] == g]
+        
+        ## Segmenta por grupo
+        group_df = df[df[aggr] == g]
         group_array = np.array(group_df)
     
-        ## Calcula aceleraciones
-        e3 = newdf[alt].shift(periods=2)
-        e2 = newdf[alt].shift(periods=1)
-        e1 = newdf[alt]
+        ## Calcula diferencia de posición
+        e3 = np.array(group_df[pos].shift(periods=2))
+        e2 = np.array(group_df[pos].shift(periods=1))
+        e1 = np.array(group_df[pos])
         
-        dt1 = newdf[time].shift(periods=1) - newdf[time]
-        dt2 = newdf[time].shift(periods=2) - newdf[time].shift(periods=1)
-
-        acc = ((e3 - e2) - (e2 - e1))/(dt1 * dt2)
+        ## Tiempo sexagecimal UTM a contador de segundos en decimales
+        dec_time = __tiempo_utc_segundos(group_df[time])
+        
+        ## Diferencia en segundos
+        dt1 = np.array(dec_time.shift(periods=1) - dec_time)
+        dt2 = np.array(dec_time.shift(periods=2) - dec_time.shift(periods=1))
+        
+        ## Aceleración en miligales
+        acc_array = (((e3 - e2) - (e2 - e1))/(dt1 * dt2)) * 100000
         
         ## Concatena arrays
-        acc =  np.array(acc)
-        group_array = np.hstack((group_array, acc))
+        acc_array =  np.array(acc_array)
+        acc_array = acc_array.reshape(-1, 1)
+        group_array = np.hstack((group_array, acc_array))
         
         ## Almacena arrays en lista
         array_list.append(group_array)
@@ -182,8 +180,8 @@ def __aceleracion_aerogravimetria(subdf, alt, time, groups, aggr):
     result_array = np.vstack(array_list)
     
     ## Crea el nuevo data frame con aceleración vertical
-    columns = subdf.columns.to_list()
-    columns.append('ACC_VERT')
+    columns = df.columns.to_list()
+    columns.append(acc)
     acc_df = pd.DataFrame(result_array, columns=columns)
     
     return acc_df
@@ -201,7 +199,8 @@ def __tiempo_utc_segundos(tiempo):
 
     Returns
     -------
-    asfd.
+    pandas.core.series.Series
+        SERIES CON TIEMPO EN CONTADOR DE SEGUNDOS
 
     """
     
@@ -217,32 +216,5 @@ def __tiempo_utc_segundos(tiempo):
         s_time.append(secs)
     
     ## retorna pandas.core.series.Series
+    s_time = pd.Series(s_time)
     return s_time
-
-
-
-    
-linedf = subdf[subdf['LINE'] == caguan_grav_hi.groups[0]]
-linedf = linedf[['TIME', 'ADJ_ALT', 'RAW_VERTACC']]
-
-sec_time = __tiempo_utc_segundos(timedf)
-adj_alt = linedf['ADJ_ALT']
-raw_acc = linedf['RAW_VERTACC']
-
-
-
-newdf = pd.DataFrame({'TIME': sec_time, 'ADJ_ALT': adj_alt, 'RAW_VERTACC': raw_acc})
-
-e3 = newdf['ADJ_ALT'].shift(periods=2)
-e2 = newdf['ADJ_ALT'].shift(periods=1)
-e1 = newdf['ADJ_ALT']
-
-dt1 = newdf['TIME'].shift(periods=1) - newdf['TIME']
-dt2 = newdf['TIME'].shift(periods=2) - newdf['TIME'].shift(periods=1)
-
-acc = ((e3 - e2) - (e2 - e1))/(dt1 * dt2)
-
-
-
-
-

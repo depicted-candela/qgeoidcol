@@ -183,6 +183,7 @@ def somigliana_numerador(radphi, gp, a, b, ge):
     
     return sumandos
 
+
 def somigliana_denominador(radphi, a, b):
     """
     Denominador de ecuación Somigliana

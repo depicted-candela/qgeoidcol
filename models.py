@@ -678,7 +678,6 @@ class AeroRawProject(RawProject):
     ## Tipos válidos
     VALID_TYPES = ['crudo-aereo']
     
-    pass
 
 
 class GrvLvlProject(Project):
