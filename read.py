@@ -6,7 +6,7 @@ Created on Thu Jun  1 20:45:18 2023
 @author: nicalcoca
 """
 
-from .models import Project, RawProject, AeroRawProject
+from .models import Project, RawProject, AeroRawProject, TerrainRawProject
 
 import pandas as pd
 import geopandas as gpd
@@ -45,4 +45,7 @@ def reader(wd, file, tipo, aggregator=None):
         ## Para objetos de clase RawProject
         case 'crudo-aereo':
             return AeroRawProject(file, df, tipo)
+        
+        case 'crudo-terreno':
+            return TerrainRawProject(file, df, tipo)
     

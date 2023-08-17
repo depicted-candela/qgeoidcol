@@ -129,8 +129,10 @@ def natural_neighbor(prj, **kwargs):
 ## Para atípicos de una variable anormal
 def anormal_histogram_outlier(prj, var):
     
-    subdf = prj.df[[var, 'GEOM']]
-    array = np.array(prj.df[var])
+    import numpy as np
+    
+    subdf = prj.df[[var, 'GEOM', 'estacion']]
+    values = np.array(prj.df[var])
     
     ## Extracción de valores del dataframe
     x = np.array(subdf['GEOM'].apply(lambda point: point.x))
@@ -139,35 +141,42 @@ def anormal_histogram_outlier(prj, var):
     del subdf['GEOM']
     
     ## Creación de nuevo dataframe para prevenir warnings
-    newdf = pd.DataFrame({'x': x, 'y': y, var: array})
+    coordinates = pd.DataFrame({'x': x, 'y': y})
     
-    array3d = np.array(newdf)
-    
-    array = array.reshape(-1, 1)
+    data = np.column_stack((coordinates, values))
     
     # Paquete para One-class SVM detector
-    from pyod.models.ocsvm import OCSVM
+    from sklearn.neighbors import LocalOutlierFactor
     
-    model = OCSVM(kernel='rbf', nu=0.5)
-    model.fit(array3d)
-    
-    labels = model.predict(array3d)
-    positions = np.where(labels==1)[0]
+    lof = LocalOutlierFactor(n_neighbors=1, contamination=0.01)
+    labels = lof.fit_predict(data)
     
     # Si hay valores atípicos
-    if 1 in labels:
+    if -1 in labels:
+        
+        spatial_outliers = data[labels == -1]
         
         # Para acceder a posiciones y valores atípicos
-        positions = np.where(labels==1)[0]
-        values = np.take(array, positions)
+        positions = np.where(labels == -1)[0]
         
-        print(f'Hay {len(values)} valores atípicos')
+        # values = np.take(array, positions)
+        spatial_outliers = data[labels == -1]
+        spatial_outliers = [i[2] for i in data[labels == -1]]
+        
+        dictionary = {'values': subdf[var].iloc[positions], 'id': positions,
+                      'nomenclatura': subdf['estacion'].iloc[positions]}
+        
+        print(f'Hay {len(spatial_outliers)} valores atípicos')
+        print(dictionary['values'])
+        print('Con identificación')
+        print(dictionary['nomenclatura'])
         
         # Histograma con todos los datos
-        plt.hist(array, bins=30, alpha=0.5)
+        plt.hist(values, bins=30, alpha=0.5)
         
         # Líneas límite
-        for out in values:
+        for out in spatial_outliers:
+            
             plt.axvline(x=out, color='red', linestyle='--')
         
         # Configuración del gráfico
@@ -178,17 +187,17 @@ def anormal_histogram_outlier(prj, var):
         plt.title(title)
         plt.show()
         
-        return values
+        return dictionary
     
     else:
         
         ## Histograma sin valores atípicos
-        plt.hist(array, bins=30, alpha=0.5)
+        plt.hist(values, bins=30, alpha=0.5)
         
         # Configuración del gráfico
         plt.xlabel(var)
         plt.ylabel('Frecuencia')
-        title = f'Histograma con detetección de outliers para: {var}'
+        title = f'Histograma outliers para variable sin outliers: {var}'
         title = stiql(title, 52)
         plt.title(title)
         plt.show()

@@ -17,16 +17,15 @@ class Aceleraciones:
     
     """
     Clase calculadora de aceleraciones
-    PRueba
     """
     
-    def acelerar(self, df, prj, metodo, pos='ADJ_ALT', time='TIME'):
+    def acelerar(self, df, prj, metodo, pos='geometry', time='TIME'):
         
-        print("ey")
         acelerador = get_aceleraciones(prj)
         df_con_acc = acelerador(prj, prj.df, metodo, pos, time)
         
         return prj.set_df_file_tipo(df_con_acc, prj.file, prj.tipo)
+
 
 def get_aceleraciones(prj):
     
@@ -45,7 +44,7 @@ def get_aceleraciones(prj):
 
     """
     
-    if isinstance(prj, AeroRawProject):
+    if isinstance(prj, AeroRawProject) or str(type(prj)) == str(AeroRawProject):
         return _aceleracion_aerogravimetria
     
     else:
@@ -154,11 +153,21 @@ def __aceleracion(df, pos, time, groups, aggr, acc):
         ## Segmenta por grupo
         group_df = df[df[aggr] == g]
         group_array = np.array(group_df)
-    
+        
+        ## Calcula geometrías
+        if acc == 'ACC_HOR_X':
+            geom = pd.Series([g.x for g in group_df['geometry']])
+        elif acc == 'ACC_HOR_Y':
+            geom = pd.Series([g.y for g in group_df['geometry']])
+        elif acc == 'ACC_VERT':
+            geom = group_df[pos]
+        else:
+            raise ValueError("Posición no disponible")
+        
         ## Calcula diferencia de posición
-        e3 = np.array(group_df[pos].shift(periods=2))
-        e2 = np.array(group_df[pos].shift(periods=1))
-        e1 = np.array(group_df[pos])
+        e3 = np.array(geom.shift(periods=2))
+        e2 = np.array(geom.shift(periods=1))
+        e1 = np.array(geom)
         
         ## Tiempo sexagecimal UTM a contador de segundos en decimales
         dec_time = __tiempo_utc_segundos(group_df[time])
