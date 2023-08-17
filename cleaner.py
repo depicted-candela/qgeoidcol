@@ -6,11 +6,154 @@ Created on Wed May 31 09:16:51 2023
 @author: nicalcoca
 """
 
-from .models import Project, GrvLvlProject
+from .models import Project, GrvLvlProject, AeroRawProject, TerrainRawProject
 
 import os, argparse
 import pandas as pd
 import copy
+
+
+class Limpiadores:
+
+    """
+    Clase limpiadora de DataFrames
+    """
+
+    ## Para limpiar verticalmente (por valor de columnas) un dataframe
+    def limpiar_verticalmente(self, prj, var, minor=None, major=None, avoid=None, select=None):
+        
+        limpiador_vertical = traer_limpiador_vertical(prj)
+        df_limpio = limpiador_vertical(prj.df, var, minor, major, avoid, select)
+
+        return df_limpio
+    
+    ## Para limpiar horizontalmente (por nombre de columnas) un dataframe
+    def limpiar_horizontalmente(self, prj, id, var, geom='geometry'):
+        
+        limpiador_horizontal = traer_limpiador_horizontal(prj)
+        df_limpio = limpiador_horizontal(prj.df, id, var, geom)
+        
+        return df_limpio
+
+
+## Segmenta el limpiador vertical por tipo de archivo
+def traer_limpiador_vertical(prj):
+    
+    if isinstance(prj, TerrainRawProject):
+
+        if prj.tipo == 'nivelacion' or prj.tipo == 'gravterrabs' or prj.tipo == 'gravterrrel':
+            
+            return _limpiador_vertical
+        
+        elif prj.tipo == 'gravs':
+
+            return f"El tipo {prj.tipo} no tiene métodos aún"
+        
+        else:
+
+            raise ValueError(f"El tipo {prj.tipo} no es adecuado para un proyecto {prj}")
+    
+    elif isinstance(prj, AeroRawProject):
+        
+        if prj.tipo == 'crudo-aereo':
+            
+            return _limpiador_vertical
+        
+        else:
+            
+            raise ValueError(f"El tipo {prj.tipo} no tiene métodos aún")
+            
+    else:
+
+        raise ValueError(f"La clase de proyecto {prj} no es adecuado")
+    
+
+## Limpiador vertical de dataframes
+def _limpiador_vertical(df, var, minor, major, avoid, select):
+
+    if minor != None:
+                
+        df = df[df[var] > minor]
+        
+    if major != None:
+        
+        df = df[df[var] < major]
+    
+    if avoid != None:
+        
+        df = df[(df[var] != avoid)]
+        
+    elif select != None:
+            
+        df = df[(df[var] == select)]
+    
+    elif avoid != None and select != None:
+        
+        raise ValueError("No puede seleccionar únicamente un valor de atributo y evitar otro")
+    
+    else:
+        
+        raise ValueError("Los parámetros de limpieza no limpiaron nada")
+
+    return df
+
+
+def traer_limpiador_horizontal(prj):
+
+    if isinstance(prj, TerrainRawProject):
+
+        if prj.tipo == 'nivelacion':
+            
+            pass
+        
+        elif prj.tipo == 'gravterrabs' or prj.tipo == 'gravterrrel':
+
+            pass
+        
+        elif prj.tipo == 'gravs':
+
+            pass
+        
+        else:
+
+            raise ValueError(f"El tipo {prj.tipo} no es adecuado para un proyecto {prj}")
+
+    elif isinstance(prj, AeroRawProject):
+
+        if prj.tipo == 'crudo-aereo':
+            
+            return _limpiador_horizontal_aerogravimetria
+
+    else:
+
+        raise ValueError(f"La clase de proyecto {prj} no es adecuado")
+
+
+def _limpiador_horizontal_aerogravimetria(df, **kwargs):
+    
+    try:
+        
+        _id = kwargs['id']
+        lat = kwargs['lat']
+        long = kwargs['long']
+        raw_alt = kwargs['raw_alt']
+        radar = kwargs['radar']
+        terrain = kwargs['terrain']
+        raw_vertacc = kwargs['raw_vertacc']
+        raw_beamdiff = kwargs['raw_beamdiff']
+        adjspten = kwargs['adjspten']
+        latcorr = kwargs['latcorr']
+        raw_eotv = kwargs['raw_eotv']
+        line = kwargs['line']
+    
+    except:
+        
+        raise ValueError("Debe ingresar todos los parámetros de la función")
+    
+    pass
+
+
+
 
 # Para limpiar ruido de una variable de un archivo csv
 def cleaning_csv(wd, file, var, output=None, minor=None, major=None,
@@ -40,7 +183,6 @@ def cleaning_csv(wd, file, var, output=None, minor=None, major=None,
     else:
         
         return clean_df
-
 
 
 ## Unir gravedad absoluta y relativa

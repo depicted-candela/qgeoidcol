@@ -52,7 +52,6 @@ class Project:
         self.__aggregator = None
         self.__groups = None
     
-    
     ## Define el agregador como propiedad del objeto
     @property
     def aggregator(self):
@@ -63,7 +62,6 @@ class Project:
     def groups(self):
         return self.__groups
         
-    
     ## Determinador de agrupaciones
     def aggregator_group(self, agg):
         
@@ -83,7 +81,11 @@ class Project:
             
         else:
             raise ValueError(f"La variable {aggregator} no existe")
-            
+    
+    ## Retorna un dataframe por grupos
+    def return_subdf(self, g):
+        return self.df[self.df[self.aggregator] == g]
+        
     
     ## Define el agregador como propiedad del objeto
     @property
@@ -209,12 +211,13 @@ class Project:
         ## to plot the coordinates with outliers
         if len(args) > 1:
             
-            outs = list(args[1]) 
+            outs = list(args[1]['id'])
             var = args[2]
             
-            ## Extrae coordenadas que tengas los valores atípicos
+            ## Extrae coordenadas que tengan los valores atípicos
             ## de la variable dada
-            out_coords = self.df[self.df[var].isin(outs)].GEOM.to_list()
+            out_coords = self.df.iloc[outs].GEOM.to_list()
+            # out_coords = self.df[self.df[var].isin(outs)].GEOM.to_list()
             out_x = [coord.x for coord in out_coords]
             out_y = [coord.y for coord in out_coords]
             
@@ -677,6 +680,14 @@ class AeroRawProject(RawProject):
     
     ## Tipos válidos
     VALID_TYPES = ['crudo-aereo']
+    
+
+class TerrainRawProject(RawProject):
+    
+    """Clase para proyectos crudos de aerogravimetría"""
+    
+    ## Tipos válidos
+    VALID_TYPES = ['crudo-terreno']
     
 
 
