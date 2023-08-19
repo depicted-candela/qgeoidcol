@@ -127,11 +127,11 @@ def natural_neighbor(prj, **kwargs):
 
 
 ## Para atípicos de una variable anormal
-def anormal_histogram_outlier(prj, var):
+def anormal_histogram_outlier(prj, var, contamination, estacion):
     
     import numpy as np
     
-    subdf = prj.df[[var, 'GEOM', 'estacion']]
+    subdf = prj.df[[var, 'GEOM', estacion]]
     values = np.array(prj.df[var])
     
     ## Extracción de valores del dataframe
@@ -148,7 +148,7 @@ def anormal_histogram_outlier(prj, var):
     # Paquete para One-class SVM detector
     from sklearn.neighbors import LocalOutlierFactor
     
-    lof = LocalOutlierFactor(n_neighbors=1, contamination=0.01)
+    lof = LocalOutlierFactor(n_neighbors=1, contamination=contamination)
     labels = lof.fit_predict(data)
     
     # Si hay valores atípicos
@@ -164,12 +164,12 @@ def anormal_histogram_outlier(prj, var):
         spatial_outliers = [i[2] for i in data[labels == -1]]
         
         dictionary = {'values': subdf[var].iloc[positions], 'id': positions,
-                      'nomenclatura': subdf['estacion'].iloc[positions]}
+                      'nomenclatura': subdf[estacion].iloc[positions]}
         
         print(f'Hay {len(spatial_outliers)} valores atípicos')
-        print(dictionary['values'])
-        print('Con identificación')
-        print(dictionary['nomenclatura'])
+        # print(dictionary['values'])
+        # print('Con identificación')
+        # print(dictionary['nomenclatura'])
         
         # Histograma con todos los datos
         plt.hist(values, bins=30, alpha=0.5)

@@ -485,8 +485,12 @@ class Project:
         h += "para más información"        
         
         ## Validez de kwargs
+        
         l_kwargs = len(_kwargs)
-        if l_kwargs not in [obg, obg+opt] or invalid_keys != 0 or invalid_var:
+        
+        result_list = list(range(obg, obg+opt + 1, 1))
+        
+        if l_kwargs not in result_list or invalid_keys != 0 or invalid_var:
             
             raise ValueError(h)
         
@@ -521,21 +525,20 @@ class Project:
             
             - Con umbral de detección de outliers personalizado:
             instance.histogram_outlier(var='variable', umbral=2)
+            
+            - Con umbral de detección de outliers no normal personalizado:
+            instance.histogram_outlier(var='variable', cont=0.1, est='nombre')
         """
         
         ## Parámetros permitidos
-        PARGS = ['var', 'umbral']
+        PARGS = ['var', 'umbral', 'cont', 'est']
         
         ## Estandarización de parámetros
-        lkwargs = self.__cond_outlier(pargs=PARGS, kwargs=kwargs, obg=1, opt=1,
+        lkwargs = self.__cond_outlier(pargs=PARGS, kwargs=kwargs, obg=1, opt=3,
                                     method='histogram_outlier')
         
         ## Extracción de kwargs
         var = kwargs['var']
-        umbral = 3
-        
-        if lkwargs == 2:
-            umbral = kwargs['umbral']
         
         ## Extracción de valores del dataframe
         array = np.array(self.df[var])
@@ -543,6 +546,11 @@ class Project:
         ## Para detectar outliers con media o SVM
         # Media
         if normality(array):
+            
+            umbral = 3
+            
+            if lkwargs == 2:
+                umbral = kwargs['umbral']
             
             # Detecta outliers de una variable normal
             outliers = normal_histogram_outlier(array, umbral, var)
@@ -552,8 +560,11 @@ class Project:
         # SVM
         else:
             
+            contamination = kwargs['cont']
+            estacion = kwargs['est']
+            
             # Detecta outliers de una variable anormal
-            outliers = anormal_histogram_outlier(self, var)
+            outliers = anormal_histogram_outlier(self, var, contamination, estacion)
             
             return self.histogram_xy_plot(outliers, var)
         
