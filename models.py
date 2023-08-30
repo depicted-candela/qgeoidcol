@@ -120,11 +120,40 @@ class Project:
             raise ValueError(f"Valores válidos para tipo son: {', '.join(self.VALID_TYPES)}")
 
     
-    # Resultado para la función print
+    ## Resultado para la función print
     def __str__(self):
         return f"{self.file}"
     
-    
+    ## Espacializar con variables
+    def spatialize_vars(self, x, y):
+
+        from shapely.geometry import Point
+
+        spat = self.df.apply(lambda row: Point(row[x], row[y]), axis=1)
+        temp_df = self.df
+        temp_df['GEOM'] = spat
+        self.set_df_file_tipo(temp_df, self.file, self.tipo)
+
+
+    ## Overlapped points
+    def overlapped_points(self, **kwargs):
+
+        id = kwargs['id']
+        var = kwargs['var']
+
+        from collections import defaultdict
+
+        # Group points by their coordinates
+        grouped = defaultdict(list)
+        for index, row in self.df.iterrows():
+            grouped[(row['GEOM'].x, row['GEOM'].y)].append(row[[id, var]])
+
+        # Find overlapping points
+        overlapping_points = {coords: ids for coords, ids in grouped.items() if len(ids) > 1}
+        
+        return overlapping_points
+
+
     ## Interpolación rápida, vecinos naturales
     def natural_neighbor(self, **kwargs):
         
@@ -485,8 +514,12 @@ class Project:
         h += "para más información"        
         
         ## Validez de kwargs
+        
         l_kwargs = len(_kwargs)
-        if l_kwargs not in [obg, obg+opt] or invalid_keys != 0 or invalid_var:
+        
+        result_list = list(range(obg, obg+opt + 1, 1))
+        
+        if l_kwargs not in result_list or invalid_keys != 0 or invalid_var:
             
             raise ValueError(h)
         
@@ -521,21 +554,20 @@ class Project:
             
             - Con umbral de detección de outliers personalizado:
             instance.histogram_outlier(var='variable', umbral=2)
+            
+            - Con umbral de detección de outliers no normal personalizado:
+            instance.histogram_outlier(var='variable', cont=0.1, est='nombre')
         """
         
         ## Parámetros permitidos
-        PARGS = ['var', 'umbral']
+        PARGS = ['var', 'umbral', 'cont', 'est']
         
         ## Estandarización de parámetros
-        lkwargs = self.__cond_outlier(pargs=PARGS, kwargs=kwargs, obg=1, opt=1,
+        lkwargs = self.__cond_outlier(pargs=PARGS, kwargs=kwargs, obg=1, opt=3,
                                     method='histogram_outlier')
         
         ## Extracción de kwargs
         var = kwargs['var']
-        umbral = 3
-        
-        if lkwargs == 2:
-            umbral = kwargs['umbral']
         
         ## Extracción de valores del dataframe
         array = np.array(self.df[var])
@@ -543,6 +575,11 @@ class Project:
         ## Para detectar outliers con media o SVM
         # Media
         if normality(array):
+            
+            umbral = 3
+            
+            if lkwargs == 2:
+                umbral = kwargs['umbral']
             
             # Detecta outliers de una variable normal
             outliers = normal_histogram_outlier(array, umbral, var)
@@ -552,8 +589,11 @@ class Project:
         # SVM
         else:
             
+            contamination = kwargs['cont']
+            estacion = kwargs['est']
+            
             # Detecta outliers de una variable anormal
-            outliers = anormal_histogram_outlier(self, var)
+            outliers = anormal_histogram_outlier(self, var, contamination, estacion)
             
             return self.histogram_xy_plot(outliers, var)
         
