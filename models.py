@@ -120,11 +120,40 @@ class Project:
             raise ValueError(f"Valores válidos para tipo son: {', '.join(self.VALID_TYPES)}")
 
     
-    # Resultado para la función print
+    ## Resultado para la función print
     def __str__(self):
         return f"{self.file}"
     
-    
+    ## Espacializar con variables
+    def spatialize_vars(self, x, y):
+
+        from shapely.geometry import Point
+
+        spat = self.df.apply(lambda row: Point(row[x], row[y]), axis=1)
+        temp_df = self.df
+        temp_df['GEOM'] = spat
+        self.set_df_file_tipo(temp_df, self.file, self.tipo)
+
+
+    ## Overlapped points
+    def overlapped_points(self, **kwargs):
+
+        id = kwargs['id']
+        var = kwargs['var']
+
+        from collections import defaultdict
+
+        # Group points by their coordinates
+        grouped = defaultdict(list)
+        for index, row in self.df.iterrows():
+            grouped[(row['GEOM'].x, row['GEOM'].y)].append(row[[id, var]])
+
+        # Find overlapping points
+        overlapping_points = {coords: ids for coords, ids in grouped.items() if len(ids) > 1}
+        
+        return overlapping_points
+
+
     ## Interpolación rápida, vecinos naturales
     def natural_neighbor(self, **kwargs):
         

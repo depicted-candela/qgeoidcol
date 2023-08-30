@@ -130,8 +130,11 @@ def natural_neighbor(prj, **kwargs):
 def anormal_histogram_outlier(prj, var, contamination, estacion):
     
     import numpy as np
-    
-    subdf = prj.df[[var, 'GEOM', estacion]]
+
+    if not prj.groups:
+        subdf = prj.df[[var, 'GEOM', estacion]]
+    else:
+        subdf = prj.df[[var, 'GEOM', estacion, prj.aggregator]]
     values = np.array(prj.df[var])
     
     ## Extracción de valores del dataframe
@@ -167,25 +170,55 @@ def anormal_histogram_outlier(prj, var, contamination, estacion):
                       'nomenclatura': subdf[estacion].iloc[positions]}
         
         print(f'Hay {len(spatial_outliers)} valores atípicos')
-        # print(dictionary['values'])
-        # print('Con identificación')
-        # print(dictionary['nomenclatura'])
         
-        # Histograma con todos los datos
-        plt.hist(values, bins=30, alpha=0.5)
-        
-        # Líneas límite
-        for out in spatial_outliers:
-            
-            plt.axvline(x=out, color='red', linestyle='--')
-        
-        # Configuración del gráfico
-        plt.xlabel(var)
-        plt.ylabel('Frecuencia')
-        title = f'Histograma con detetección de outliers para: {var}'
-        title = stiql(title, 52)
-        plt.title(title)
-        plt.show()
+        # Histograma
+        if not prj.groups:
+
+            plt.hist(values, bins=30, alpha=0.5)
+
+            # Líneas límite
+            for out in spatial_outliers:
+                plt.axvline(x=out, color='red', linestyle='--')
+
+            # Configuración del gráfico
+            plt.xlabel(var)
+            plt.ylabel('Frecuencia')
+            title = f'Histograma con detetección de outliers para: {var}'
+            title = stiql(title, 52)
+            plt.title(title)
+            plt.show()
+
+        else:
+
+            # Group data by Category
+            grouped = subdf.groupby(prj.aggregator)
+
+            # Calculate the number of rows and columns for the subplot grid
+            num_categories = len(grouped)
+            num_cols = 3
+            num_rows = (num_categories + 1) // num_cols
+
+            # Create subplots for histograms in a grid layout
+            fig, axes = plt.subplots(nrows=num_rows, ncols=num_cols, figsize=(12, 6 * num_rows))
+
+            # Flatten the axes array if there's only one row
+            if num_rows == 1:
+                axes = [axes]
+
+            for idx, (category, group) in enumerate(grouped):
+                row_idx = idx // num_cols
+                col_idx = idx % num_cols
+                ax = axes[row_idx][col_idx]
+                group[var].plot(kind='hist', ax=ax, bins=20, title=f'Histograma para Categoría: {category}')
+                ax.set_xlabel(var)
+                ax.set_ylabel('Frecuencia')
+
+            # Remove any empty subplots
+            for idx in range(len(grouped), num_rows * num_cols):
+                fig.delaxes(axes.flatten()[idx])
+
+            plt.tight_layout()
+            plt.show()
         
         return dictionary
     
