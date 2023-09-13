@@ -195,8 +195,11 @@ def anormal_histogram_outlier(prj, var, contamination, estacion):
 
             # Calculate the number of rows and columns for the subplot grid
             num_categories = len(grouped)
-            num_cols = 3
+            num_cols = 4
             num_rows = (num_categories + 1) // num_cols
+
+            if num_rows == 0: num_rows = 1
+            if num_cols == 0: num_cols = 1
 
             # Create subplots for histograms in a grid layout
             fig, axes = plt.subplots(nrows=num_rows, ncols=num_cols, figsize=(12, 6 * num_rows))
@@ -208,14 +211,32 @@ def anormal_histogram_outlier(prj, var, contamination, estacion):
             for idx, (category, group) in enumerate(grouped):
                 row_idx = idx // num_cols
                 col_idx = idx % num_cols
-                ax = axes[row_idx][col_idx]
-                group[var].plot(kind='hist', ax=ax, bins=20, title=f'Histograma para Categoría: {category}')
-                ax.set_xlabel(var)
-                ax.set_ylabel('Frecuencia')
+                try:
+                    ax = axes[row_idx][col_idx]
+                    group[var].plot(kind='hist', ax=ax, bins=20, title=f'Histograma para Categoría: {category}')
+                    # ax.set_xlabel(var, fontsize=5)
+                    # ax.set_ylabel('Frecuencia', fontsize=5)
+                    ax.title.set_fontsize(7)
+                    # ax.tick_params(axis='both', labelsize=5)
+
+                    # Remove x and y labels and tick labels
+                    ax.set_xticks([])  # Remove x-axis tick labels
+                    ax.set_yticks([])  # Remove y-axis tick labels
+                    ax.set_xlabel('')  # Remove x-axis label
+                    ax.set_ylabel('')  # Remove y-axis label
+
+                    # Set the title font size
+                    ax.set_axis_off()
+
+                except:
+                    pass
 
             # Remove any empty subplots
-            for idx in range(len(grouped), num_rows * num_cols):
-                fig.delaxes(axes.flatten()[idx])
+            try:
+                for idx in range(len(grouped), num_rows * num_cols):
+                    fig.delaxes(axes.flatten()[idx])
+            except:
+                pass
 
             plt.tight_layout()
             plt.show()

@@ -135,6 +135,22 @@ class Project:
         self.set_df_file_tipo(temp_df, self.file, self.tipo)
 
 
+    ## Grouped statistics
+    def grouped_statistics(self, **kwargs):
+
+        from .statistics import calculate_statistics
+
+        if self.aggregator:
+
+            var = kwargs['var']
+
+            return self.df.groupby(self.aggregator)[var].apply(calculate_statistics)
+
+        else:
+
+            raise ValueError("DEbes especificar el argumento 'var'")
+
+
     ## Overlapped points
     def overlapped_points(self, **kwargs):
 
