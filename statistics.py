@@ -50,4 +50,22 @@ def normality(array):
             
             print("Los datos no siguen una distribución normal")
             return False
-    
+
+
+def calculate_statistics(group):
+
+    from scipy.stats import kurtosis, skew
+    import pandas as pd
+
+    return pd.Series({
+        'mean': group.mean(),
+        'median': group.median(),
+        'kurtosis': kurtosis(group),
+        'skewness': skew(group),
+        'std': group.std(),
+        'max': group.max(),
+        'min': group.min(),
+        '25th_percentile': group.quantile(0.25),
+        '50th_percentile': group.quantile(0.50),
+        '75th_percentile': group.quantile(0.75)
+    })
