@@ -127,15 +127,28 @@ def natural_neighbor(prj, **kwargs):
 
 
 ## Para atípicos de una variable anormal
-def anormal_histogram_outlier(prj, var, contamination, estacion):
+def anormal_histogram_outlier(prj, var, contamination, estacion, grav, alt):
     
     import numpy as np
 
-    if not prj.groups:
-        subdf = prj.df[[var, 'GEOM', estacion]]
+    condition1 = pd.isna(prj.df[grav])
+    condition2 = pd.isna(prj.df[alt])
+    conditions = condition1 | condition2
+    subdf = prj.df[~conditions]
+
+    if var == grav:
+        var2 = alt
     else:
-        subdf = prj.df[[var, 'GEOM', estacion, prj.aggregator]]
-    values = np.array(prj.df[var])
+        var2 = grav
+
+
+    if not prj.groups:
+        subdf = subdf[[var, var2, 'GEOM', estacion]]
+    else:
+        subdf = subdf[[var, var2, 'GEOM', estacion, prj.aggregator]]
+
+    values = np.array(subdf[[var, var2]])
+    values_h = np.array(subdf[var])
     
     ## Extracción de valores del dataframe
     x = np.array(subdf['GEOM'].apply(lambda point: point.x))
@@ -148,7 +161,7 @@ def anormal_histogram_outlier(prj, var, contamination, estacion):
     
     data = np.column_stack((coordinates, values))
     
-    # Paquete para One-class SVM detector
+    # Paquete para LocalOutlierFactor
     from sklearn.neighbors import LocalOutlierFactor
     
     lof = LocalOutlierFactor(n_neighbors=1, contamination=contamination)
@@ -174,7 +187,7 @@ def anormal_histogram_outlier(prj, var, contamination, estacion):
         # Histograma
         if not prj.groups:
 
-            plt.hist(values, bins=30, alpha=0.5)
+            plt.hist(values_h, bins=30, alpha=0.5)
 
             # Líneas límite
             for out in spatial_outliers:
@@ -246,7 +259,7 @@ def anormal_histogram_outlier(prj, var, contamination, estacion):
     else:
         
         ## Histograma sin valores atípicos
-        plt.hist(values, bins=30, alpha=0.5)
+        plt.hist(values_h, bins=30, alpha=0.5)
         
         # Configuración del gráfico
         plt.xlabel(var)

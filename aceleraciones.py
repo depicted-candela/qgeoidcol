@@ -19,7 +19,7 @@ class Aceleraciones:
     Clase calculadora de aceleraciones
     """
     
-    def acelerar(self, df, prj, metodo, pos='geometry', time='TIME'):
+    def acelerar(self, df, prj, metodo, pos='GEOM', time='TIME'):
         
         acelerador = get_aceleraciones(prj)
         df_con_acc = acelerador(prj, prj.df, metodo, pos, time)
@@ -112,10 +112,71 @@ def _aceleracion_aerogravimetria(prj, df, metodo, pos, time):
         
         return __aceleracion(df, pos, time, groups, aggr, 'ACC_HOR_Y')
     
+    elif metodo == 'horizontal':
+
+        return __aceleracion_h(df, 'ACC_HOR')
+    
     ## Si método mal proporcionado
     else:
         
         raise ValueError(f"No hay métodos para aceleracion {metodo}")
+
+
+def __aceleracion_h(df, acc):
+
+    """
+    PARA CALCULAR LA ACELERACIÓN HORIZONTAL DE PROYECTOS AÉREOS
+
+    Parameters
+    ----------
+    df : pandas.core.frame.DataFrame
+        DATA FRAME CON VARIABLES PARA ACELERACIONES CALCULAR.
+    groups : lista
+        AGRUPACIONES
+    aggr : string
+        VARIABLE AGREGADORA
+    acc : string
+        NOMBRE DE VARIABLE DE NUEVA VARIABLE DE ACELERACIÓN
+
+    Returns
+    -------
+    pandas.core.frame.DataFrame.
+        DATAFRAME CON ACELERACIÓN CALCULADA
+        
+    """
+
+    import numpy as np
+
+    array_list = []
+
+    try:
+        df['ACC_HOR_X']
+        df['ACC_HOR_Y']
+    except:
+        raise ValueError('Debe primero calcular las aceleraciones horizontales x y y')
+
+    df_array = np.array(df)
+    acc_x = np.array(df['ACC_HOR_X'])
+    acc_y = np.array(df['ACC_HOR_Y'])
+    acc_h = np.sqrt(list(acc_x**2 + acc_y**2))
+
+    ## Concatena arrays
+    acc_array_h = np.array(acc_h)
+    acc_array_h = acc_array_h.reshape(-1, 1)
+    df_array = np.hstack((df_array, acc_array_h))
+
+    ## Almacena arrays en lista
+    array_list.append(df_array)
+
+    # Concatenate arrays vertically
+    result_array = np.vstack(array_list)
+    
+    ## Crea el nuevo data frame con aceleración vertical
+    columns = df.columns.to_list()
+    columns.append(acc)
+    acc_h_df = pd.DataFrame(result_array, columns=columns)
+    
+    return acc_h_df
 
 
 def __aceleracion(df, pos, time, groups, aggr, acc):
@@ -156,9 +217,9 @@ def __aceleracion(df, pos, time, groups, aggr, acc):
         
         ## Calcula geometrías
         if acc == 'ACC_HOR_X':
-            geom = pd.Series([g.x for g in group_df['geometry']])
+            geom = pd.Series([g.x for g in group_df['GEOM']])
         elif acc == 'ACC_HOR_Y':
-            geom = pd.Series([g.y for g in group_df['geometry']])
+            geom = pd.Series([g.y for g in group_df['GEOM']])
         elif acc == 'ACC_VERT':
             geom = group_df[pos]
         else:
@@ -180,7 +241,7 @@ def __aceleracion(df, pos, time, groups, aggr, acc):
         acc_array = (((e3 - e2) - (e2 - e1))/(dt1 * dt2)) * 100000
         
         ## Concatena arrays
-        acc_array =  np.array(acc_array)
+        acc_array = np.array(acc_array)
         acc_array = acc_array.reshape(-1, 1)
         group_array = np.hstack((group_array, acc_array))
         

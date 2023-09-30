@@ -6,13 +6,13 @@ Created on Tue Jun 20 15:14:48 2023
 @author: nicalcoca
 """
 
-from scipy import stats
-
 ## Para detectar normalidad
 def normality(array):
-    
+
     ## Para listas pequeñas
     if len(array) < 5000:
+
+        from scipy import stats
         
         # Estadístico de Shapiro
         statistic, p_value = stats.shapiro(array)
@@ -54,10 +54,13 @@ def normality(array):
 
 def calculate_statistics(group):
 
-    from scipy.stats import kurtosis, skew
+    from scipy.stats import kurtosis, skew, entropy
     import pandas as pd
+    import numpy as np
 
     return pd.Series({
+        'variance': group.var(),
+        'entropy': entropy(np.histogram(group, bins=len(set(group)))[0]),
         'mean': group.mean(),
         'median': group.median(),
         'kurtosis': kurtosis(group),

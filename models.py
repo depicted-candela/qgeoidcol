@@ -139,16 +139,24 @@ class Project:
     def grouped_statistics(self, **kwargs):
 
         from .statistics import calculate_statistics
+        import pandas as pd
 
         if self.aggregator:
 
-            var = kwargs['var']
+            try:
 
-            return self.df.groupby(self.aggregator)[var].apply(calculate_statistics)
+                var = kwargs['var']
+                tempdf = self.df[~pd.isna(self.df[var])]
+
+            except:
+
+                raise ValueError("Debes especificar el argumento 'var'")
+
+            return tempdf.groupby(self.aggregator)[var].apply(calculate_statistics)
 
         else:
 
-            raise ValueError("DEbes especificar el argumento 'var'")
+            raise ValueError("El objeto debe ser aggregado antes con el método 'aggregator_group('var')'")
 
 
     ## Overlapped points
@@ -562,6 +570,9 @@ class Project:
     
     ## Para detectar outliers dada una variable y un dataframe base
     def histogram_outlier(self, **kwargs):
+
+        import pandas as pd
+
         """
         Utilice este método tal que:
             
@@ -576,17 +587,22 @@ class Project:
         """
         
         ## Parámetros permitidos
-        PARGS = ['var', 'umbral', 'cont', 'est']
+        PARGS = ['var', 'umbral', 'cont', 'est', 'grav', 'alt']
         
         ## Estandarización de parámetros
-        lkwargs = self.__cond_outlier(pargs=PARGS, kwargs=kwargs, obg=1, opt=3,
+        lkwargs = self.__cond_outlier(pargs=PARGS, kwargs=kwargs, obg=1, opt=5,
                                     method='histogram_outlier')
         
         ## Extracción de kwargs
         var = kwargs['var']
         
         ## Extracción de valores del dataframe
-        array = np.array(self.df[var])
+        tempdf = self.df[~pd.isna(self.df[var])]
+
+        if (len(tempdf) != len(self.df)):
+            print(f"Hay {len(self.df) - len(tempdf)} valores nulos en la variable {var}")
+
+        array = np.array(tempdf[var])
         
         ## Para detectar outliers con media o SVM
         # Media
@@ -602,14 +618,16 @@ class Project:
             
             return self.histogram_xy_plot(outliers, var)
             
-        # SVM
+        # LOCAL
         else:
             
             contamination = kwargs['cont']
             estacion = kwargs['est']
+            gravedad = kwargs['grav']
+            altura = kwargs['alt']
             
             # Detecta outliers de una variable anormal
-            outliers = anormal_histogram_outlier(self, var, contamination, estacion)
+            outliers = anormal_histogram_outlier(self, var, contamination, estacion, gravedad, altura)
             
             return self.histogram_xy_plot(outliers, var)
         
