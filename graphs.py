@@ -337,3 +337,12 @@ def normal_histogram_outlier(array, umbral, var):
         plt.show()
         
         return outliers
+
+
+## Para determinar gráficamente grupos atípicos dadas dos métricas
+def atypical_group_per_statistics(series, *args):
+    
+    if len(args) != 2:
+
+        raise ValueError("Debe ingresar dos nombres de estadísticos para comparar, son variance, entropy, mean, median, kurtosis, skewness, std, max y min")
+    

@@ -58,6 +58,8 @@ def calculate_statistics(group):
     import pandas as pd
     import numpy as np
 
+    group = pd.to_numeric(group, errors='coerce')
+
     return pd.Series({
         'variance': group.var(),
         'entropy': entropy(np.histogram(group, bins=len(set(group)))[0]),
