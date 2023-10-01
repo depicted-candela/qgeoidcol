@@ -156,7 +156,25 @@ class Project:
 
         else:
 
-            raise ValueError("El objeto debe ser aggregado antes con el método 'aggregator_group('var')'")
+            raise ValueError("El objeto debe ser agregado antes con el método 'aggregator_group('var')'")
+    
+
+    ## General statistics
+    def general_statistics(self, **kwargs):
+
+        from .statistics import calculate_statistics
+        import pandas as pd
+
+        try:
+
+            var = kwargs['var']
+            tempdf = self.df[~pd.isna(self.df[var])]
+
+        except:
+
+            raise ValueError("Debes especificar el argumento 'var'")
+
+        return calculate_statistics(tempdf[var])
 
 
     ## Overlapped points
