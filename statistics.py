@@ -52,6 +52,7 @@ def normality(array):
             return False
 
 
+## Derminador de estadísticos para agregaciones o variables agregadas
 def calculate_statistics(group):
 
     from scipy.stats import kurtosis, skew, entropy
@@ -74,3 +75,4 @@ def calculate_statistics(group):
         '50th_percentile': group.quantile(0.50),
         '75th_percentile': group.quantile(0.75)
     })
+
