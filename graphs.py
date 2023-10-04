@@ -163,7 +163,7 @@ def time_series_general(grpd_data, groups, var_name, names):
     for i, segment in enumerate(segments):
         ax = axes[i]
         for c in tempdf.columns:
-            ax.plot(segment.index, segment[c], 'ro-')
+            ax.plot(segment.index, segment[c])
     
     # Customize the plot
     plt.ylabel(var_name)
