@@ -10,8 +10,9 @@ from pandas.core.frame import DataFrame as pdf
 
 from .string_tools import split_text_in_equal_lines as stiql
 
-from .graphs import anormal_histogram_outlier, normal_histogram_outlier
+from .graphs import anormal_histogram_outlier, normal_histogram_outlier, time_series_general
 from .statistics import normality
+from .ordenador import *
 
 from metpy import interpolate as interp
 import matplotlib.pyplot as plt
@@ -159,6 +160,36 @@ class Project:
             raise ValueError("El objeto debe ser agregado antes con el método 'aggregator_group('var')'")
     
 
+    ## Graphical disturbances
+    def grouped_statistics_graphic(self, method, *args):
+
+        if len(args) != 3:
+
+            raise ValueError("Debe ingresar dos nombres de estadísticos para comparar, son variance, entropy, mean, median, kurtosis, skewness, std, max y min")
+
+        stats = ['variance', 'entropy', 'mean', 'median', 'kurtosis', 'skewness', 'std', 'max', 'min']
+        if args[1] not in stats or args[2] not in stats:
+            raise ValueError("Los parámetros ingresados no son estadísticos permitidos")
+        if args[0] not in self.df.columns:
+            raise ValueError("La variable no hace parte del data frame")
+
+        order = Ordenador()
+        statistics = self.grouped_statistics(var=args[0])
+        
+        tempdf = order.ordenar(statistics, method, args[1], args[2])
+
+        for label, row in tempdf.iterrows():
+            plt.scatter(row[args[1]], row[args[2]])
+            plt.annotate(label, (row[args[1]], row[args[2]]), textcoords="offset points", xytext=(0, 10), ha='center')
+
+        plt.xlabel(args[1])
+        plt.ylabel(args[2])
+        plt.title(f'{args[1]} vs {args[2]}')
+        plt.show()
+
+        return tempdf
+    
+
     ## General statistics
     def general_statistics(self, **kwargs):
 
@@ -249,7 +280,7 @@ class Project:
         
         # Show the plot
         plt.show()
-    
+        
     
     ## Gráfico para observar coordenadas
     def plot_coordinates(self, *args):
@@ -636,7 +667,7 @@ class Project:
             
             return self.histogram_xy_plot(outliers, var)
             
-        # LOCAL
+        # Local
         else:
             
             contamination = kwargs['cont']
@@ -712,7 +743,7 @@ class RawProject(Project):
         pass
     
     # Gráfico de todas las líneas
-    def values_per_group(self, var_name):
+    def values_per_groups(self, var_name):
         
         df = self.df
         aggr = self.aggregator
@@ -736,7 +767,7 @@ class RawProject(Project):
         # Display the plot
         plt.show()
     
-    # Gráfico de diez líneas
+    # Gráfico de líneas establecidas en límite
     def values_per_group_limited(self, var_name, start, end):
         
         df = self.df
@@ -764,6 +795,51 @@ class RawProject(Project):
         
         # Display the plot
         plt.show()
+    
+    # Gráfico de línea establecida
+    def values_per_group(self, var_name, groups):
+
+        if not self.aggregator:
+            raise ValueError('Primero agregue el dataframe')
+        
+        df = self.df
+        aggr = self.aggregator
+        conds = [g for g in groups if g not in self.groups]
+
+        ## Para confirmar agregador
+        if not conds:
+            grpd_data = df[df[aggr].isin(groups)][var_name]
+            listed_data = list(grpd_data)
+        else:
+            raise ValueError("Grupos no existen en el dataframe")
+        
+        time_series_general([listed_data], groups, var_name)
+    
+    
+    ## Para comparar gráficamente una línea con histograma y series de tiempo
+    def values_compared_per_group(self, project, var, self_group, project_group):
+        
+        if not isinstance(project, Project) or not isinstance(project, AeroRawProject) or not isinstance(project, RawProject):    
+            raise ValueError('El objeto a comparar no es de la clase adecuada')
+        if not project.aggregator:
+            raise ValueError('Primero agregue el dataframe')
+        if not self.aggregator:
+            raise ValueError('Primero agregue el dataframe')
+
+        ## Para confirmar agregador
+        if self_group not in self.groups or project_group not in project.groups:
+            raise ValueError("Grupos no existen en el dataframe")
+        else:
+            sdf = self.df
+            aggr = self.aggregator
+            grpd_data_self = sdf[sdf[aggr].isin([self_group])][var]
+            pdf = project.df
+            aggr = project.aggregator
+            grpd_data_project = pdf[pdf[aggr].isin([project_group])][var]
+
+        listed_data = [list(grpd_data_self), list(grpd_data_project)]
+
+        time_series_general(listed_data, [self_group, project_group], var, [self.file, project.file])
     
 
 class AeroRawProject(RawProject):

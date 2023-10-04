@@ -7,7 +7,6 @@ Created on Thu Jun  1 20:59:57 2023
 """
 
 from metpy import interpolate as interp
-
 from .string_tools import split_text_in_equal_lines as stiql
 
 import matplotlib.pyplot as plt
@@ -125,6 +124,57 @@ def natural_neighbor(prj, **kwargs):
     # Show the plot
     plt.show()
 
+
+## Para gráfica de series de tiempo de máximo dos líneas sobrepuestas
+def time_series_general(grpd_data, groups, var_name, names):
+
+    size = 0
+    group = groups[0]
+    for i, g in enumerate(grpd_data):
+        if len(g) > size:
+            size = len(g)
+            group = groups[i]
+
+    data = {group: [np.nan] * size}
+    tempdf = pd.DataFrame(data)
+
+    for i, group in enumerate(groups):
+
+        lgd = len(grpd_data[i])
+        ltd = len(tempdf)
+
+        if lgd == ltd:
+            tempdf[group] = grpd_data[i]
+        elif lgd < ltd:
+            tempdf[group] = None
+            tempdf.iloc[list(range(lgd)), tempdf.columns.get_loc(group)] = grpd_data[i]
+        else:
+            tempdf[group] = None
+            tempdf.iloc[list(range(lgd)), tempdf.columns.get_loc(group)] = grpd_data[i]
+    
+    num_segments = 3
+    segment_length = len(tempdf) // num_segments
+    segments = [tempdf[i * segment_length:(i + 1) * segment_length] for i in range(num_segments)]
+
+    # Create a figure with three separate graphs side by side
+    fig, axes = plt.subplots(num_segments, 1, figsize=(10, 6), sharex=False, sharey=False)
+
+    # Plotting the graph
+    for i, segment in enumerate(segments):
+        ax = axes[i]
+        for c in tempdf.columns:
+            ax.plot(segment.index, segment[c], 'ro-')
+    
+    # Customize the plot
+    plt.ylabel(var_name)
+    plt.xlabel('tiempo')
+    plt.suptitle(f'Series de tiempo de(l) grupo(s) {groups} para los proyectos {names}')
+    
+    ## Adjustment
+    plt.tight_layout()
+
+    # Display the plot
+    plt.show()
 
 ## Para atípicos de una variable anormal
 def anormal_histogram_outlier(prj, var, contamination, estacion, grav, alt):
@@ -340,9 +390,10 @@ def normal_histogram_outlier(array, umbral, var):
 
 
 ## Para determinar gráficamente grupos atípicos dadas dos métricas
-def atypical_group_per_statistics(series, *args):
+def _atypical_group_per_statistics(prj, *args):
     
     if len(args) != 2:
 
         raise ValueError("Debe ingresar dos nombres de estadísticos para comparar, son variance, entropy, mean, median, kurtosis, skewness, std, max y min")
     
+    return args

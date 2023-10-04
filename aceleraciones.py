@@ -19,10 +19,10 @@ class Aceleraciones:
     Clase calculadora de aceleraciones
     """
     
-    def acelerar(self, df, prj, metodo, pos='GEOM', time='TIME'):
+    def acelerar(self, prj, metodo, pos='GEOM', time='TIME'):
         
         acelerador = get_aceleraciones(prj)
-        df_con_acc = acelerador(prj, prj.df, metodo, pos, time)
+        df_con_acc = acelerador(prj, metodo, pos, time)
         
         return prj.set_df_file_tipo(df_con_acc, prj.file, prj.tipo)
 
@@ -50,8 +50,7 @@ def get_aceleraciones(prj):
     else:
         raise ValueError("Tipo de proyecto no soportado")
 
-
-def _aceleracion_aerogravimetria(prj, df, metodo, pos, time):
+def _aceleracion_aerogravimetria(prj, metodo, pos, time):
     
     """
     PARA REGRESAR ACELERACIONES DE PROYECTOS AÉREOS
@@ -60,8 +59,6 @@ def _aceleracion_aerogravimetria(prj, df, metodo, pos, time):
     ----------
     prj : qgeoidcol.models.RawProject
         PROYECTO A CALCULAR.
-    df : pandas.core.frame.DataFrame
-        DATA FRAME CON VARIABLES PARA ACELERACIONES CALCULAR.
     metodo : string
         YA SEA PARA horizontal O verticales.
     pos : string
@@ -100,26 +97,86 @@ def _aceleracion_aerogravimetria(prj, df, metodo, pos, time):
     ## Aceleración vertical
     if metodo == 'vertical':
     
-        return __aceleracion(df, pos, time, groups, aggr, 'ACC_VERT')
+        return __aceleracion(prj.df, pos, time, groups, aggr, 'ACC_VERT')
     
     ## Aceleración horizontal
     elif metodo == 'horizontal_x':
         
-        return __aceleracion(df, pos, time, groups, aggr, 'ACC_HOR_X')
+        return __aceleracion(prj.df, pos, time, groups, aggr, 'ACC_HOR_X')
     
     ## Aceleraciones horizontales
     elif metodo == 'horizontal_y':
         
-        return __aceleracion(df, pos, time, groups, aggr, 'ACC_HOR_Y')
+        return __aceleracion(prj.df, pos, time, groups, aggr, 'ACC_HOR_Y')
     
     elif metodo == 'horizontal':
 
-        return __aceleracion_h(df, 'ACC_HOR')
+        return __aceleracion_h(prj.df, 'ACC_HOR')
+    
+    elif metodo == 'total':
+
+        return __aceleracion_c(prj.df, 'ACC_TOT')
     
     ## Si método mal proporcionado
     else:
         
         raise ValueError(f"No hay métodos para aceleracion {metodo}")
+
+
+def __aceleracion_c(df, acc):
+
+    """
+    PARA CALCULAR LA ACELERACIÓN HORIZONTAL DE PROYECTOS AÉREOS
+
+    Parameters
+    ----------
+    df : pandas.core.frame.DataFrame
+        DATA FRAME CON VARIABLES PARA ACELERACIONES CALCULAR.
+    groups : lista
+        AGRUPACIONES
+    aggr : string
+        VARIABLE AGREGADORA
+    acc : string
+        NOMBRE DE VARIABLE DE NUEVA VARIABLE DE ACELERACIÓN
+
+    Returns
+    -------
+    pandas.core.frame.DataFrame.
+        DATAFRAME CON ACELERACIÓN CALCULADA
+        
+    """
+
+    import numpy as np
+
+    array_list = []
+
+    try:
+        acc_x = np.array(df['ACC_HOR_X'])
+        acc_y = np.array(df['ACC_HOR_Y'])
+        acc_z = np.array(df['RAW_VERTACC'])
+        acc_t = np.sqrt(list(acc_x**2 + acc_y**2 + acc_z**2))
+    except:
+        raise ValueError('Debe primero calcular las aceleraciones horizontales x y y')
+
+    df_array = np.array(df)
+
+    ## Concatena arrays
+    acc_array_t = np.array(acc_t)
+    acc_array_t = acc_array_t.reshape(-1, 1)
+    df_array = np.hstack((df_array, acc_array_t))
+
+    ## Almacena arrays en lista
+    array_list.append(df_array)
+
+    # Concatenate arrays vertically
+    result_array = np.vstack(array_list)
+    
+    ## Crea el nuevo data frame con aceleración vertical
+    columns = df.columns.to_list()
+    columns.append(acc)
+    acc_t_df = pd.DataFrame(result_array, columns=columns)
+    
+    return acc_t_df
 
 
 def __aceleracion_h(df, acc):
