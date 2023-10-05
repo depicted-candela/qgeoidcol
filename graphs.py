@@ -138,6 +138,7 @@ def time_series_general(grpd_data, groups, var_name, names):
     data = {group: [np.nan] * size}
     tempdf = pd.DataFrame(data)
 
+    # Itera sobre el conjunto de datos para dividirlo en varios
     for i, group in enumerate(groups):
 
         lgd = len(grpd_data[i])
@@ -157,18 +158,21 @@ def time_series_general(grpd_data, groups, var_name, names):
     segments = [tempdf[i * segment_length:(i + 1) * segment_length] for i in range(num_segments)]
 
     # Create a figure with three separate graphs side by side
-    fig, axes = plt.subplots(num_segments, 1, figsize=(10, 6), sharex=False, sharey=False)
+    fig, axes = plt.subplots(num_segments, 1, figsize=(10, 6), sharex=False, sharey=True)
 
     # Plotting the graph
     for i, segment in enumerate(segments):
         ax = axes[i]
-        for c in tempdf.columns:
-            ax.plot(segment.index, segment[c])
+        for j, c in enumerate(tempdf.columns):
+            if j == 0:
+                ax.plot(segment.index, segment[c], 'g-', label=c, linewidth=1)
+            else:
+                ax.plot(segment.index, segment[c], '-.', label=c)
     
     # Customize the plot
     plt.ylabel(var_name)
     plt.xlabel('tiempo')
-    plt.suptitle(f'Series de tiempo de(l) grupo(s) {groups} para los proyectos {names}')
+    plt.suptitle(f'Series de tiempo de(l) grupo(s) {groups}\npara los proyectos {names}')
     
     ## Adjustment
     plt.tight_layout()

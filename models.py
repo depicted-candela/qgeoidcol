@@ -821,9 +821,7 @@ class RawProject(Project):
         
         if not isinstance(project, Project) or not isinstance(project, AeroRawProject) or not isinstance(project, RawProject):    
             raise ValueError('El objeto a comparar no es de la clase adecuada')
-        if not project.aggregator:
-            raise ValueError('Primero agregue el dataframe')
-        if not self.aggregator:
+        if not project.aggregator or not self.aggregator:
             raise ValueError('Primero agregue el dataframe')
 
         ## Para confirmar agregador
