@@ -125,8 +125,9 @@ def _comparacion_statistics(own_prj, com_prj, stats_name, args, kwargs):
     info['own'] = own_prj.file
     info['comp'] = com_prj.file
 
-    cc = 0  ## Contador para mostrar 
+    cc = 0  ## Contador para mostrar
     c_ = 0  ## Máximo valor de coeficiente para considerar si graficar
+    linea = None
     vars = list(args)
 
     ll = len(vars)*len(kwargs['base'])*len(kwargs['comparar'])*len(stats_name)
@@ -146,22 +147,23 @@ def _comparacion_statistics(own_prj, com_prj, stats_name, args, kwargs):
                     ## Si es un coeficiente mayor y no infinito
                     if c >= c_ and math.isfinite(c):
                         c_ = c
+                        linea = u
                     ## Cuenta pasos
                     cc+=1
                     ## Imprime avance
                     if cc % 10 == 0:
                         print(f"Percentage of advance: {cc/ll*100:.2f}%", end='\r')
     
-        print(f"El mayor valor del coeficiente es {c_} para la variable {v}.")
+        print(f"El mayor valor del coeficiente es {c_} para la variable {v} en la línea {linea}.")
 
     tempdfinfo = copy.deepcopy(info)
 
     ## Información final de comparaciones
     for k, v in tempdfinfo.items():
-        if len(v) > 0:
+        if isinstance(v, pd.core.frame.DataFrame) and len(v) > 0:
             ## Guarda máximo cociente en diccionario
-            info[k + '_max'] = tempdfinfo[k]['coef'].max()
-            print(f"Existen {len(set(v['unknown']))} líneas con coeficiente mayor a dos para {k}")
+            info[k + '_max'] = v['coef'].max()
+            print(f"Existen {len(set(v['unknown']))} líneas con coeficiente mayores a dos para {k}")
     
     return info
 
