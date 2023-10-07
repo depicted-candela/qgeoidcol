@@ -6,7 +6,7 @@ Created on Tue Jun 20 15:14:48 2023
 @author: nicalcoca
 """
 
-from string_tools import split_text_in_equal_lines as stiql
+from .string_tools import split_text_in_equal_lines as stiql
 
 ## Grafica coecientes entre estadísticos de dos proyectos
 class Cocientes():
@@ -17,12 +17,12 @@ class Cocientes():
     
     def comparar(self, self_p, other_prj, *args, **kwargs):
         
-        comparador = get_comparaciones(args, kwargs, self_p, other_prj)
-        comparaciones = comparador(args)
+        comparador = get_comparaciones(self_p, other_prj, args, kwargs)
+        comparaciones = comparador
         
-        return prj.set_df_file_tipo(df_con_acc, prj.file, prj.tipo)
+        return comparaciones
 
-def get_comparaciones(args, kwargs, self_p, other_p):
+def get_comparaciones(self_p, other_p, args, kwargs):
     
     """
     TRAE LAS COMPARACIONES.
@@ -45,35 +45,48 @@ def get_comparaciones(args, kwargs, self_p, other_p):
 
     """
     
+    ## Para contrastar variables bien ingresadas
     if len([kk for kk in kwargs.keys() if kk not in ['comparar', 'base']]) != 0:
-
-        raise ValueError("Debes especificar líneas a comparar en el argumento 'comparar' y para comparar en el argumento 'base'")
-
+    
+        try:
+        
+            sg = self_p.groups
+            og = other_p.groups
+            
+        except:
+            
+            mensaje = "El objecto {prj} del archivo {prj.file} debe ser"
+            mensaje += "agregado por líneas, por ejemplo:   "
+            mensaje += "caguan_grav_hi.aggregator_group('LINE')"
+            mensaje = stiql(mensaje, 52)
+            
+            raise ValueError(mensaje)
+        
+        if ('comparar' not in kwargs.keys()): kwargs['comparar'] = sg
+        if ('base' not in kwargs.keys()): kwargs['base'] = og
+    
+    ## Tamaño de argumentos por tuplas
     largs = len(args)
 
+    ## Para variar la configuración
     if largs == 1:
         
-        if 'GRAV_REL_zcore' not in args:
+        if 'GRAV_REL_zcore' not in args: return ValueError(f'La variable debe ser GRAV_REL_zcore')
 
-            return ValueError(f'La variable debe ser GRAV_REL_zcore')
-
-        return _comparacion_statistics
+        return _comparacion_statistics(self_p, other_p, ['entropy'], args, kwargs)
     
     elif largs == 2:
 
         possible_vars = ['ACC_HOR', 'ACC_TOT']
-
-        if len([k for k in kwargs.keys() if k not in possible_vars]) != 0:
-
-            raise ValueError(f"Las valores deben ser {possible_vars}")
+        if len([k for k in args if k not in possible_vars]) != 0: raise ValueError(f"Las valores deben ser {possible_vars}")
         
-        return _comparacion_statistics
+        return _comparacion_statistics(self_p, other_p, ['entropy', 'mean'], args, kwargs)
     
     else:
         raise ValueError("Proporciene suficientes variables (1 o 2)")
 
 
-def _comparacion_statistics(own_prj, com_prj, kwargs, args):
+def _comparacion_statistics(own_prj, com_prj, stats_name, args, kwargs):
     
     """
     PARA REGRESAR ACELERACIONES DE PROYECTOS AÉREOS
@@ -81,81 +94,76 @@ def _comparacion_statistics(own_prj, com_prj, kwargs, args):
     Parameters
     ----------
     own_prj : qgeoidcol.models.RawProject
-        PROYECTO A CALCULAR.
+        PROYECTO A COMPARAR.
     com_prj : string
-        YA SEA PARA horizontal O verticales.
-    pos : string
-        VARIABLE CON POSICION DE VUELO.
-    time : string
-        NOMBRE DE LA VARIABLE TEMPORAL.
+        PROYECTO A COMPARAR.
+    stats : list of strings
+        ESTADÍSTICOS PARA COMPARAR.
+    args : tuple
+        VARIABLES A COMPARAR CON LA CONFIGURACIÓN.
+    kwargs : string
+        LÍNEAS A COMPARAR CON LA CONFIGURACIÓN.
 
     Raises
     ------
     ValueError
-        MENSAJE DE ERROR POR MÉTODO DE ACELERACIÓN DESCONOCIDO.
+        MENSAJES DE ERROR.
 
     Returns
     -------
     pandas.core.frame.DataFrame.
-        DATAFRAME CON ACELERACIÓN CALCULADA
+        DATAFRAME CON COMPARACIONES SEGÚN CONFIGURACIÓN.
 
     """
-
-    try:
-        
-        own_prj.groups
-        com_prj.groups
-        
-    except:
-        
-        mensaje = "El objecto {prj} del archivo {prj.file} debe ser"
-        mensaje += "agregado por líneas, por ejemplo:   "
-        mensaje += "caguan_grav_hi.aggregator_group('LINE')"
-        mensaje = stiql(mensaje, 52)
-        
-        raise ValueError(mensaje)
     
-    ## Para variar el comportamiento según el método
-    ## Aceleración vertical
-    vars = ['ACC_HOR', 'ACC_TOT']
-    stats_name = ['mean', 'entropy']
-    known = [228108.1, 202117.0 , 238109.1]
-
-    entropy = pd.DataFrame(columns=['unknown', 'known', 'coef'])
-    mean = pd.DataFrame(columns=['unknown', 'known', 'coef'])
-
+    import pandas as pd
     import math
-    cc = 0
-    c_ = 0
-    ll = len(vars)*len(known)*len(grav_north_low.groups)*len(stats_name)
-    for v in vars:
-        for u in grav_north_low.groups:
-            unk = grav_north_low.grouped_statistics(var=v, id='FID')[u]
-            for k in known:
-                kn = caguan_2006.grouped_statistics(var=v, id='FID')[k]
+    import copy
+
+    ## Estructura de datos para guardar información
+    info = {sn: pd.DataFrame(columns=['unknown', 'known', 'coef', 'mGals']) for sn in stats_name}
+    info['own'] = own_prj.file
+    info['comp'] = com_prj.file
+
+    cc = 0  ## Contador para mostrar 
+    c_ = 0  ## Máximo valor de coeficiente para considerar si graficar
+    vars = list(args)
+
+    ll = len(vars)*len(kwargs['base'])*len(kwargs['comparar'])*len(stats_name)
+            ## Cuenta los pasos para crear porcentaje
+    
+    ## Itera sobre líneas de ambos proyectos para comparar estadísticos
+    for v in vars: ## Itera sobre variables
+        for u in kwargs['comparar']: ## Itera sobre líneas a comparar
+            unk = own_prj.grouped_statistics(var=v, id='FID')[u]
+            for k in kwargs['base']: ## Itera sobre líneas para comparar
+                kn = com_prj.grouped_statistics(var=v, id='FID')[k]
                 for i, s in enumerate(stats_name):
                     c = unk[s] / kn[s]
                     if c >=2 and math.isfinite(c):
-                        # print(v)
-                        # print(s)
-                        # print(u)
-                        # print(unk[s])
-                        # print(k)
-                        # print(kn[s])
-                        # print(c)
-                        if s == 'entropy':
-                            entropy = entropy._append({'unknown': str(u), 'known': str(k), 'coef': c}, ignore_index=True)
-                        else:
-                            mean = mean._append({'unknown': str(u), 'known': str(k), 'coef': c}, ignore_index=True)
-                        # grav_north_low.values_compared_per_group(caguan_2006, v, u, k)
+                        info[s] = info[s]._append({'unknown': str(u), 'known': str(k), 'coef': c, 'mGals': c / 2},
+                                                  ignore_index=True)
+                    ## Si es un coeficiente mayor y no infinito
                     if c >= c_ and math.isfinite(c):
                         c_ = c
+                    ## Cuenta pasos
                     cc+=1
+                    ## Imprime avance
                     if cc % 10 == 0:
-                        print(cc/ll)
+                        print(f"Percentage of advance: {cc/ll*100:.2f}%", end='\r')
+    
+        print(f"El mayor valor del coeficiente es {c_} para la variable {v}.")
 
-    len(list(set(mean['unknown']))) + len(list(set(entropy['known'])))
-    len(list(set(grav_north_low.df['LINE'])))
+    tempdfinfo = copy.deepcopy(info)
+
+    ## Información final de comparaciones
+    for k, v in tempdfinfo.items():
+        if len(v) > 0:
+            ## Guarda máximo cociente en diccionario
+            info[k + '_max'] = tempdfinfo[k]['coef'].max()
+            print(f"Existen {len(set(v['unknown']))} líneas con coeficiente mayor a dos para {k}")
+    
+    return info
 
 
 ## Para detectar normalidad

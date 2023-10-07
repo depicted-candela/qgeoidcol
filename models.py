@@ -10,8 +10,8 @@ from pandas.core.frame import DataFrame as pdf
 
 from .string_tools import split_text_in_equal_lines as stiql
 
-from .graphs import anormal_histogram_outlier, normal_histogram_outlier, time_series_general
-from .statistics import normality
+from .graphs import anormal_histogram_outlier, normal_histogram_outlier, time_series_general, compared_grouped_statistics
+from .statistics import normality, Cocientes
 from .ordenador import *
 
 from metpy import interpolate as interp
@@ -838,6 +838,25 @@ class RawProject(Project):
         listed_data = [list(grpd_data_self), list(grpd_data_project)]
 
         time_series_general(listed_data, [self_group, project_group], var, [self.file, project.file])
+    
+    ## Para comparar estadística y gráficamente línea con un diagrama de dispersión
+    def statistics_compared_per_group(self, project, *args, **kwargs):
+        
+        if not isinstance(project, Project) or not isinstance(project, AeroRawProject) or not isinstance(project, RawProject):    
+            raise ValueError('El objeto a comparar no es de la clase adecuada')
+        if not project.aggregator or not self.aggregator:
+            raise ValueError('Primero agregue el dataframe')
+
+        ## Para comparar estadísticos
+        comp = Cocientes()
+        compared_stats = comp.comparar(self, project, args[0], args[0], base=kwargs['base'], comparar=kwargs['comparar'])
+
+        ## Para comparar gráficamente estadísticos
+        compared_grouped_statistics(compared_stats)
+
+        return compared_stats
+        
+
     
 
 class AeroRawProject(RawProject):
