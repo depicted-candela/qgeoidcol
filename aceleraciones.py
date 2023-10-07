@@ -132,10 +132,6 @@ def __aceleracion_c(df, acc):
     ----------
     df : pandas.core.frame.DataFrame
         DATA FRAME CON VARIABLES PARA ACELERACIONES CALCULAR.
-    groups : lista
-        AGRUPACIONES
-    aggr : string
-        VARIABLE AGREGADORA
     acc : string
         NOMBRE DE VARIABLE DE NUEVA VARIABLE DE ACELERACIÓN
 
@@ -153,12 +149,22 @@ def __aceleracion_c(df, acc):
     try:
         acc_x = np.array(df['ACC_HOR_X'])
         acc_y = np.array(df['ACC_HOR_Y'])
-        acc_z = np.array(df['RAW_VERTACC'])
-        acc_t = np.sqrt(list(acc_x**2 + acc_y**2 + acc_z**2))
+        if 'RAW_VERTACC' not in df.columns:
+            c = False
+            while not c:
+                acc_z_name = input("Ingrese el nombre de la variable de aceleración vertical: ")
+                if acc_z_name in df.columns:
+                    acc_z = np.array(df[acc_z_name])
+                    c = True
+                else:
+                    print(f"La variable {acc_z_name} no existe en el data frame, las variables que existen son: {df.columns}")
+        else:
+            acc_z = np.array(df['RAW_VERTACC'])
     except:
         raise ValueError('Debe primero calcular las aceleraciones horizontales x y y')
 
     df_array = np.array(df)
+    acc_t = np.sqrt(list(acc_x**2 + acc_y**2 + acc_z**2))
 
     ## Concatena arrays
     acc_array_t = np.array(acc_t)
