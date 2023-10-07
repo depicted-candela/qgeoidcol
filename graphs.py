@@ -391,3 +391,18 @@ def normal_histogram_outlier(array, umbral, var):
         plt.show()
         
         return outliers
+
+
+# Compara gráficamente estadísticas de un diccionario de data frames
+def compared_grouped_statistics(info):
+    for k, v in info.items():
+        if isinstance(v, pd.core.frame.DataFrame):
+            plt.scatter(v['unknown'], v['known'], c=v['coef'], cmap='viridis', label='Coeficiente')
+            cbar = plt.colorbar()
+            cbar.set_label('Coeficiente')
+            plt.xlabel(info['own'])
+            plt.ylabel(info['comp'])
+            plt.yticks(list(set(v['known'])))
+            plt.xticks(list(set(v['unknown'])), rotation=90.0)
+            plt.title(f'Coeficiente de cambio para {k}')
+            plt.show()
