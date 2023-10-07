@@ -847,6 +847,12 @@ class RawProject(Project):
         if not project.aggregator or not self.aggregator:
             raise ValueError('Primero agregue el dataframe')
 
+        ## Para contrastar variables bien ingresadas
+        if len([kk for kk in ['comparar', 'base'] if kk not in kwargs.keys()]) != 0:
+            
+            if ('comparar' not in kwargs.keys()): kwargs['comparar'] = self.groups
+            if ('base' not in kwargs.keys()): kwargs['base'] = project.groups
+
         ## Para comparar estadísticos
         comp = Cocientes()
         compared_stats = comp.comparar(self, project, args[0], args[0], base=kwargs['base'], comparar=kwargs['comparar'])

@@ -46,24 +46,19 @@ def get_comparaciones(self_p, other_p, args, kwargs):
     """
     
     ## Para contrastar variables bien ingresadas
-    if len([kk for kk in kwargs.keys() if kk not in ['comparar', 'base']]) != 0:
+    try:
     
-        try:
+        sg = self_p.groups
+        og = other_p.groups
         
-            sg = self_p.groups
-            og = other_p.groups
-            
-        except:
-            
-            mensaje = "El objecto {prj} del archivo {prj.file} debe ser"
-            mensaje += "agregado por líneas, por ejemplo:   "
-            mensaje += "caguan_grav_hi.aggregator_group('LINE')"
-            mensaje = stiql(mensaje, 52)
-            
-            raise ValueError(mensaje)
+    except:
         
-        if ('comparar' not in kwargs.keys()): kwargs['comparar'] = sg
-        if ('base' not in kwargs.keys()): kwargs['base'] = og
+        mensaje = "El objecto {prj} del archivo {prj.file} debe ser"
+        mensaje += "agregado por líneas, por ejemplo:   "
+        mensaje += "caguan_grav_hi.aggregator_group('LINE')"
+        mensaje = stiql(mensaje, 52)
+        
+        raise ValueError(mensaje)
     
     ## Tamaño de argumentos por tuplas
     largs = len(args)
@@ -80,7 +75,7 @@ def get_comparaciones(self_p, other_p, args, kwargs):
         possible_vars = ['ACC_HOR', 'ACC_TOT']
         if len([k for k in args if k not in possible_vars]) != 0: raise ValueError(f"Las valores deben ser {possible_vars}")
         
-        return _comparacion_statistics(self_p, other_p, ['entropy', 'mean'], args, kwargs)
+        return _comparacion_statistics(self_p, other_p, ['entropy', 'mean'], possible_vars, kwargs)
     
     else:
         raise ValueError("Proporciene suficientes variables (1 o 2)")
@@ -125,16 +120,16 @@ def _comparacion_statistics(own_prj, com_prj, stats_name, args, kwargs):
     info['own'] = own_prj.file
     info['comp'] = com_prj.file
 
-    cc = 0  ## Contador para mostrar
     c_ = 0  ## Máximo valor de coeficiente para considerar si graficar
+    cc = 0  ## Contador para mostrar
     linea = None
     vars = list(args)
 
     ll = len(vars)*len(kwargs['base'])*len(kwargs['comparar'])*len(stats_name)
             ## Cuenta los pasos para crear porcentaje
-    
+
     ## Itera sobre líneas de ambos proyectos para comparar estadísticos
-    for v in vars: ## Itera sobre variables
+    for v in vars:                  ## Itera sobre variables
         for u in kwargs['comparar']: ## Itera sobre líneas a comparar
             unk = own_prj.grouped_statistics(var=v, id='FID')[u]
             for k in kwargs['base']: ## Itera sobre líneas para comparar
@@ -148,13 +143,16 @@ def _comparacion_statistics(own_prj, com_prj, stats_name, args, kwargs):
                     if c >= c_ and math.isfinite(c):
                         c_ = c
                         linea = u
+                        ulinea = v
+                        max_var = v
+                        max_s = s
                     ## Cuenta pasos
                     cc+=1
                     ## Imprime avance
                     if cc % 10 == 0:
                         print(f"Percentage of advance: {cc/ll*100:.2f}%", end='\r')
     
-        print(f"El mayor valor del coeficiente es {c_} para la variable {v} en la línea {linea}.")
+    print(f"El mayor valor del coeficiente es {c_} para la variable {max_var} con el estadístico {max_s} en la línea {linea} del proyecto {own_prj.file} comparada con la {ulinea} del proyecto {com_prj.file}.")
 
     tempdfinfo = copy.deepcopy(info)
 
