@@ -855,15 +855,13 @@ class RawProject(Project):
 
         ## Para comparar estadísticos
         comp = Cocientes()
-        compared_stats = comp.comparar(self, project, args[0], args[0], base=kwargs['base'], comparar=kwargs['comparar'])
+        compared_stats = comp.comparar(self, project, args, base=kwargs['base'], comparar=kwargs['comparar'])
 
         ## Para comparar gráficamente estadísticos
         compared_grouped_statistics(compared_stats)
 
         return compared_stats
         
-
-    
 
 class AeroRawProject(RawProject):
     

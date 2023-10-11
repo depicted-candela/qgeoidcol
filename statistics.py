@@ -17,7 +17,7 @@ class Cocientes():
     
     def comparar(self, self_p, other_prj, *args, **kwargs):
         
-        comparador = get_comparaciones(self_p, other_prj, args, kwargs)
+        comparador = get_comparaciones(self_p, other_prj, args[0], kwargs)
         comparaciones = comparador
         
         return comparaciones
@@ -116,7 +116,7 @@ def _comparacion_statistics(own_prj, com_prj, stats_name, args, kwargs):
     import copy
 
     ## Estructura de datos para guardar información
-    info = {sn: pd.DataFrame(columns=['unknown', 'known', 'coef', 'mGals']) for sn in stats_name}
+    info = {sn: pd.DataFrame(columns=['unknown', 'known', 'coef', 'mGals', 'var']) for sn in stats_name}
     info['own'] = own_prj.file
     info['comp'] = com_prj.file
 
@@ -131,19 +131,26 @@ def _comparacion_statistics(own_prj, com_prj, stats_name, args, kwargs):
     ## Itera sobre líneas de ambos proyectos para comparar estadísticos
     for v in vars:                  ## Itera sobre variables
         for u in kwargs['comparar']: ## Itera sobre líneas a comparar
-            unk = own_prj.grouped_statistics(var=v, id='FID')[u]
+            unk = own_prj.grouped_statistics(var=v, id='GEOM')[u]
             for k in kwargs['base']: ## Itera sobre líneas para comparar
-                kn = com_prj.grouped_statistics(var=v, id='FID')[k]
+                try:
+                    kn = com_prj.grouped_statistics(var=v, id='GEOM')[k]
+                except:
+                    raise ValueError("Ingrese correctamente el proyecto o líneas a comparar")
                 for i, s in enumerate(stats_name):
                     c = unk[s] / kn[s]
                     if c >=2 and math.isfinite(c):
-                        info[s] = info[s]._append({'unknown': str(u), 'known': str(k), 'coef': c, 'mGals': c / 2},
-                                                  ignore_index=True)
+                        info[s] = info[s]._append({'unknown': str(u),
+                                                   'known': str(k),
+                                                   'coef': c,
+                                                   'mGals': c / 2,
+                                                   'var': v},
+                                                   ignore_index=True)
                     ## Si es un coeficiente mayor y no infinito
                     if c >= c_ and math.isfinite(c):
                         c_ = c
                         linea = u
-                        ulinea = v
+                        ulinea = k
                         max_var = v
                         max_s = s
                     ## Cuenta pasos
@@ -152,7 +159,7 @@ def _comparacion_statistics(own_prj, com_prj, stats_name, args, kwargs):
                     if cc % 10 == 0:
                         print(f"Percentage of advance: {cc/ll*100:.2f}%", end='\r')
     
-    print(f"El mayor valor del coeficiente es {c_} para la variable {max_var} con el estadístico {max_s} en la línea {linea} del proyecto {own_prj.file} comparada con la {ulinea} del proyecto {com_prj.file}.")
+    print(f"El mayor valor del coeficiente es {c_} ({c_ / 2} mGals) para la variable {max_var} con el estadístico {max_s} en la línea {linea} del proyecto {own_prj.file} comparada con la {ulinea} del proyecto {com_prj.file}.")
 
     tempdfinfo = copy.deepcopy(info)
 
@@ -161,7 +168,7 @@ def _comparacion_statistics(own_prj, com_prj, stats_name, args, kwargs):
         if isinstance(v, pd.core.frame.DataFrame) and len(v) > 0:
             ## Guarda máximo cociente en diccionario
             info[k + '_max'] = v['coef'].max()
-            print(f"Existen {len(set(v['unknown']))} líneas con coeficiente mayores a dos para {k}")
+            print(f"Existen {len(list(set(v['unknown'])))} líneas con coeficiente mayor a dos para {k}")
     
     return info
 

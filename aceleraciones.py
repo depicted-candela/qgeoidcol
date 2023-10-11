@@ -142,8 +142,6 @@ def __aceleracion_c(df, acc):
         
     """
 
-    import numpy as np
-
     array_list = []
 
     try:
@@ -207,8 +205,6 @@ def __aceleracion_h(df, acc):
         DATAFRAME CON ACELERACIÓN CALCULADA
         
     """
-
-    import numpy as np
 
     array_list = []
 
