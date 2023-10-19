@@ -6,8 +6,6 @@ Created on Tue Jun 20 15:14:48 2023
 @author: nicalcoca
 """
 
-from .string_tools import split_text_in_equal_lines as stiql
-
 ## Grafica coecientes entre estadísticos de dos proyectos
 class Cocientes():
 
@@ -56,7 +54,6 @@ def get_comparaciones(self_p, other_p, args, kwargs):
         mensaje = "El objecto {prj} del archivo {prj.file} debe ser"
         mensaje += "agregado por líneas, por ejemplo:   "
         mensaje += "caguan_grav_hi.aggregator_group('LINE')"
-        mensaje = stiql(mensaje, 52)
         
         raise ValueError(mensaje)
     
@@ -176,10 +173,10 @@ def _comparacion_statistics(own_prj, com_prj, stats_name, args, kwargs):
 ## Para detectar normalidad
 def normality(array):
 
+    from scipy import stats
+
     ## Para listas pequeñas
     if len(array) < 5000:
-
-        from scipy import stats
         
         # Estadístico de Shapiro
         statistic, p_value = stats.shapiro(array)

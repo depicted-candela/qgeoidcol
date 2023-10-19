@@ -6,7 +6,7 @@ Created on Thu Jun  1 20:45:18 2023
 @author: nicalcoca
 """
 
-from .models import Project, RawProject, AeroRawProject, TerrainRawProject
+from .models import Project, AeroRawProject, TerrainRawProject
 
 import pandas as pd
 import geopandas as gpd
