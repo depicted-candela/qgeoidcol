@@ -31,7 +31,7 @@ def get_gravedades(prj, metodo):
         DATA FRAME DEL PROYECTO MÁS CORRECCIONES.
 
     """
-    
+
     if isinstance(prj, AeroRawProject) or str(type(prj)) == str(AeroRawProject):
 
         if metodo == 'relativa':

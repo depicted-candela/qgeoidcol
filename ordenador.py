@@ -4,7 +4,7 @@ class Ordenador:
     Clase ordenadora de datos
     """
 
-    def ordenar(self, data, metodo, *args):
+    def ordenar(self, data, metodo, *args, **kwargs):
 
         ordenador = get_ordenador(metodo)
         data_ordenada = ordenador(data, *args)
@@ -13,9 +13,12 @@ class Ordenador:
 
 def get_ordenador(metodo):
     
-    if metodo == 'atypical_groups':
+    if metodo == 'atypical_groups': return _series_series_to_df
+    # if metodo == 'groups_to_df': return _groups_to_df
+# ## Añade variable por grupos a dataframe con grupos
+# def _groups_to_df(data, kwargs):
 
-        return _series_series_to_df
+
 
 ## Convierte series en series a un arreglo de dos variables e índices
 def _series_series_to_df(data, *args):

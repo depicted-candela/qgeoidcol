@@ -806,14 +806,16 @@ class RawProject(Project):
         aggr = self.aggregator
         conds = [g for g in groups if g not in self.groups]
 
+        print()
+
         ## Para confirmar agregador
-        if not conds:
+        if len(conds) == 0:
             grpd_data = df[df[aggr].isin(groups)][var_name]
             listed_data = list(grpd_data)
         else:
             raise ValueError("Grupos no existen en el dataframe")
         
-        time_series_general([listed_data], groups, var_name)
+        time_series_general([listed_data], groups, var_name, self.file)
     
     
     ## Para comparar gráficamente una línea con histograma y series de tiempo

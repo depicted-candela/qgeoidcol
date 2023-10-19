@@ -126,7 +126,7 @@ def natural_neighbor(prj, **kwargs):
 
 
 ## Para gráfica de series de tiempo de máximo dos líneas sobrepuestas
-def time_series_general(grpd_data, groups, var_name, names):
+def time_series_general(grpd_data, groups, var_name, names=None):
 
     size = 0
     group = groups[0]
@@ -172,7 +172,10 @@ def time_series_general(grpd_data, groups, var_name, names):
     # Customize the plot
     plt.ylabel(var_name)
     plt.xlabel('tiempo')
-    plt.suptitle(f'Series de tiempo de(l) grupo(s) {groups}\npara los proyectos {names}')
+    if not names:
+        plt.suptitle(f'Series de tiempo de(l) grupo(s) {groups}')
+    else:
+        plt.suptitle(f'Series de tiempo de(l) grupo(s) {groups}\npara los proyectos {names}')
     
     ## Adjustment
     plt.tight_layout()
