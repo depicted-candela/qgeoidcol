@@ -125,33 +125,50 @@ def natural_neighbor(prj, **kwargs):
     plt.show()
 
 
-## Para gráfica de series de tiempo de máximo dos líneas sobrepuestas
+## Para gráfica de series de tiempo y máximo dos líneas sobrepuestas
 def time_series_general(grpd_data, groups, var_name, names=None):
 
-    size = 0
-    group = groups[0]
-    for i, g in enumerate(grpd_data):
-        if len(g) > size:
-            size = len(g)
-            group = groups[i]
+    grpd_data = np.array(grpd_data)
 
-    data = {group: [np.nan] * size}
+    ## Si es solo una línea de una variable sin comparación
+    if len(grpd_data.shape) == 1:
+        size = grpd_data.shape[0]
+        data = {groups[0]: [np.nan] * size}
+        grpd_data = np.array([grpd_data])
+
+    ## Si es o más de una línea o más de una variable; para comparar
+    else:
+        size = 0
+        group = groups[0]
+        for i, g in enumerate(grpd_data):
+            if len(g) > size:
+                size = len(g)
+                group = groups[i]
+        data = {group: [np.nan] * size}
+
     tempdf = pd.DataFrame(data)
+    
+    ## Enumeración por variable
+    if type(var_name) == list and len(var_name) > 1:
+        enum = enumerate(var_name)
+    ## Enumeración por grupo
+    else:
+        enum = enumerate(groups)
 
     # Itera sobre el conjunto de datos para dividirlo en varios
-    for i, group in enumerate(groups):
+    for i, e in enum:
 
         lgd = len(grpd_data[i])
         ltd = len(tempdf)
 
         if lgd == ltd:
-            tempdf[group] = grpd_data[i]
+            tempdf[e] = grpd_data[i]
         elif lgd < ltd:
-            tempdf[group] = None
-            tempdf.iloc[list(range(lgd)), tempdf.columns.get_loc(group)] = grpd_data[i]
+            tempdf[e] = None
+            tempdf.iloc[list(range(lgd)), tempdf.columns.get_loc(e)] = grpd_data[i]
         else:
             tempdf[group] = None
-            tempdf.iloc[list(range(lgd)), tempdf.columns.get_loc(group)] = grpd_data[i]
+            tempdf.iloc[list(range(lgd)), tempdf.columns.get_loc(e)] = grpd_data[i]
     
     num_segments = 3
     segment_length = len(tempdf) // num_segments

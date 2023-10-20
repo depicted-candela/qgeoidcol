@@ -806,16 +806,14 @@ class RawProject(Project):
         aggr = self.aggregator
         conds = [g for g in groups if g not in self.groups]
 
-        print()
-
         ## Para confirmar agregador
         if len(conds) == 0:
-            grpd_data = df[df[aggr].isin(groups)][var_name]
-            listed_data = list(grpd_data)
+            grpd_data = df[df[aggr].isin(groups)]
+            listed_data = list(grpd_data[var_name])
         else:
             raise ValueError("Grupos no existen en el dataframe")
         
-        time_series_general([listed_data], groups, var_name, self.file)
+        time_series_general(listed_data, groups, var_name, self.file)
     
     
     ## Para comparar gráficamente una línea con histograma y series de tiempo
@@ -840,6 +838,25 @@ class RawProject(Project):
         listed_data = [list(grpd_data_self), list(grpd_data_project)]
 
         time_series_general(listed_data, [self_group, project_group], var, [self.file, project.file])
+    
+    ## Para comparar dos líneas de la misma variable
+    def values_compared_per_variable(self, var1, var2, self_group):
+        
+        if not self.aggregator:
+            raise ValueError('Primero agregue el dataframe')
+
+        ## Para confirmar agregador
+        if self_group[0] not in self.groups:
+            raise ValueError("Grupos no existen en el dataframe")
+        else:
+            sdf = self.df
+            aggr = self.aggregator
+            grpd_data_self1 = sdf[sdf[aggr].isin([self_group[0]])][var1]
+            grpd_data_self2 = sdf[sdf[aggr].isin([self_group[0]])][var2]
+
+        listed_data = [list(grpd_data_self1), list(grpd_data_self2)]
+
+        time_series_general(listed_data, self_group, [var1, var2], [self.file])
     
     ## Para comparar estadística y gráficamente línea con un diagrama de dispersión
     def statistics_compared_per_group(self, project, *args, **kwargs):
