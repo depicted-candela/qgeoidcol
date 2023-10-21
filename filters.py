@@ -100,12 +100,14 @@ def _filtro_carson(prj, kwargs):
     ordenador = Ordenador()
     
     ## Veces para filtrar
+        # Primera vuelta
     raw = __ida_carson(prj.groups, prj.aggregator, df, a, w, var)
+                                                            ## Ordena el filtro en el data frame
     df = ordenador.ordenar(df, 'groups_to_df', 0, agrupador=prj.aggregator, dic=raw, var=var+"_CARSON_F")
     raw = __vuelta_carson(prj.groups, prj.aggregator, df, a, w, var+"_CARSON_F")
     df = ordenador.ordenar(df, 'groups_to_df', 0, agrupador=prj.aggregator, dic=raw, var=var+"_CARSON_F")
     
-    ## Si es más de un filtro
+        # Si es más de una vuelta
     if f > 1:
         for j in range(f - 1):
             raw = __ida_carson(prj.groups, prj.aggregator, df, a, w, var+"_CARSON_F")
@@ -117,7 +119,6 @@ def _filtro_carson(prj, kwargs):
             raw = __vuelta_carson(prj.groups, prj.aggregator, df, a, w, var+"_CARSON_F")
             df = ordenador.ordenar(df, 'groups_to_df', 0, agrupador=prj.aggregator, dic=raw, var=var+"_CARSON_F")
 
-    ## Ordena el filtro en el data frame
     return df
 
 ## Filtra con Carson desde el principio
