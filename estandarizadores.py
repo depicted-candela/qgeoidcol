@@ -25,10 +25,10 @@ def _raw_to(prj, metodo, var):
 
     if metodo == 'z-score':
 
-        return _raw_to_zcore(prj, var)
+        return __raw_to_zcore(prj, var)
 
 ## Convierte series en series a un arreglo de dos variables e índices
-def _raw_to_zcore(prj, var):
+def __raw_to_zcore(prj, var):
 
     import pandas as pd
     import numpy as np
