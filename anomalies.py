@@ -51,6 +51,8 @@ def get_corrector(prj):
     
     if isinstance(prj, GrvLvlProject):
         return _correccion_proyectos_terrestres
+    elif isinstance(prj, GrvLvlProject):
+        
     else:
         raise ValueError("El tipo de proyecto no es adecuado")
     
