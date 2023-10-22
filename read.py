@@ -6,7 +6,7 @@ Created on Thu Jun  1 20:45:18 2023
 @author: nicalcoca
 """
 
-from .models import Project, AeroRawProject, TerrainRawProject
+from .models import Project, AeroRawProject, TerrainRawProject, Correctores
 
 import pandas as pd
 import geopandas as gpd
@@ -22,9 +22,8 @@ class Lector:
     def leer(self, wd, file, metodo='proyecto_gravedad', **kwargs):
 
         lector = get_lector(metodo)
-        obj = lector(wd, file, **kwargs)
 
-        return obj
+        return lector(wd, file, **kwargs)
 
 
 ## Lector para archivos
@@ -40,7 +39,7 @@ def get_lector(metodo):
 
     else:
 
-        return True
+        raise ValueError("Método desconocido")
 
 ## Lector de archivos de deriva
 def _reader_deriva(wd, file, **kwargs):
@@ -51,40 +50,36 @@ def _reader_deriva(wd, file, **kwargs):
         raise ValueError("Debe proporcionar el 'delimitador' y la 'empresa")
     
     if empresa == 'carson':
-
-        return __deriva_carson(wd, file, **kwargs)
+        return __deriva_carson(file, **kwargs)
     
     else:
-
         raise ValueError("Empresa desconocida")
 
 ## Para calcular deriva desde archivos de Carson
-def __deriva_carson(wd, file, **kwargs):
+def __deriva_carson(file, **kwargs):
 
     try:
         concat = kwargs['concatenador']
         delimiter = kwargs['delimitador']
     except:
         raise ValueError("Si el proyecto es de Carson debe utilizar un 'concatenador' y 'delimitador'")
-
-    # os.chdir(wd)
+    
     df = pd.read_csv(file, delimiter=delimiter)
-    concat = pd.read_csv(concat, delimiter=delimiter)
+    concat = Correctores.read_csv(concat, empresa='carson', delimiter=delimiter)
     
     ## Para concatenar
     subdf = df[['FlightNumber', 'BeforeFlight', 'AfterFlight']]
     subdf.columns = ['Flt', 'BeforeFlight', 'AfterFlight']
     subdf['Flt'].apply(int)
-    concat = concat.merge(subdf, on='Flt')
+    df = concat.data.merge(subdf, on='Flt')
 
     ## Concatena la línea de vuelo
-    dir = concat['Dir'].apply(str)
-    flt = concat['Flt'].apply(lambda x: '0' + str(x) if x < 10 else str(x))
-    line = concat['LineID#'].apply(str)
-    print(dir)
-    print(flt)
-    print(line)
-    concat['LINE'] = dir + flt + line
+    dir = df['Dir'].apply(str)
+    flt = df['Flt'].apply(lambda x: '0' + str(x) if x < 10 else str(x))
+    line = df['LineID#'].apply(str)
+    df['LINE'] = dir + flt + line
+    df['LINE'] = df['LINE'].apply(float)
+    concat.set_data(df)
 
     return concat
 

@@ -14,7 +14,6 @@ from .graphs import anormal_histogram_outlier, normal_histogram_outlier, time_se
 from .statistics import normality, Cocientes
 from .ordenador import *
 
-from metpy import interpolate as interp
 import matplotlib.pyplot as plt
 import numpy as np
 
@@ -30,12 +29,11 @@ class Project:
         - el tipo 'nivelacion-gravedades' se refiere a un dataframe con
     gravedades absolutas y relativas intersecadas 
     """
-    VALID_TYPES = ['nivelacion', 'gravedad-absoluta', 'gravedad-relativa',
-                   'gravedades']
+    VALID_TYPES = ['nivelacion', 'gravedades']
     
     
     ## Valores inicializadores
-    def __init__(self, file, df, tipo):
+    def __init__(self, file, df, tipo, empresa='carson'):
         
         # Para validar tipos de formato de objetos de entrada
         if type(file) == str and type(df) == pdf and type(tipo) == str:
@@ -52,6 +50,8 @@ class Project:
         ## Para crear grupos basados en el agregador
         self.__aggregator = None
         self.__groups = None
+        self.__exactitud = None
+        self.__empresa = empresa
     
     ## Define el agregador como propiedad del objeto
     @property
@@ -62,6 +62,16 @@ class Project:
     @property
     def groups(self):
         return self.__groups
+
+    ## Define exacitud como propiedad del objeto
+    @property
+    def exactitud(self):
+        return self.__exactitud
+    
+    ## Define la empresa como propiedad del objeto
+    @property
+    def empresa(self):
+        return self.__empresa
         
     ## Determinador de agrupaciones
     def aggregator_group(self, agg):
@@ -69,24 +79,16 @@ class Project:
         ## Si la variable está en el data frame
         if agg in list(self.df.columns):
             
-            def aggregator(self, value):
-                self.__aggregator = value
-            
-            aggregator(self, agg)
+            self.__aggregator = agg
             grs = list(set(list(self.df[agg])))
-
-            def groups(self, value):
-                self.__groups = value
-            
-            groups(self, grs)
+            self.__groups = grs
             
         else:
-            raise ValueError(f"La variable {aggregator} no existe")
+            raise ValueError(f"La variable {agg} no existe")
     
     ## Retorna un dataframe por grupos
     def return_subdf(self, g):
         return self.df[self.df[self.aggregator] == g]
-        
     
     ## Define el agregador como propiedad del objeto
     @property
@@ -103,6 +105,9 @@ class Project:
     def tipo(self):
         return self.__tipo
     
+    ## Agrega la exactitud
+    def set_exactitud(self, exact):
+        self.__exactitud = exact
 
     ## Reglas para tipo de dato
     def set_df_file_tipo(self, df, file, tipo):
@@ -253,7 +258,8 @@ class Project:
         LONGi = np.linspace(min(LONG), max(LONG), 100)
         LONGi, LATi = np.meshgrid(LONGi, LATi)
         
-        
+        from metpy import interpolate as interp
+
         # Interpolate data onto the grid using Natural Neighbor interpolation
         variable_intplt = interp.natural_neighbor_to_grid(LONG,
                                                           LAT,
@@ -888,6 +894,13 @@ class AeroRawProject(RawProject):
     
     ## Tipos válidos
     VALID_TYPES = ['crudo-aereo']
+
+class AeroCorrectProject(RawProject):
+    
+    """Clase para proyectos crudos de aerogravimetría"""
+    
+    ## Tipos válidos
+    VALID_TYPES = ['aire-libre-aereo']
     
 
 class TerrainRawProject(RawProject):
@@ -1033,3 +1046,38 @@ class GrvLvlCorrProject(Project):
         pass
     def __cleaning_levelling():
         pass
+
+class Correctores:
+    """
+    Tipos de objetos para corregir datos gravimétricos
+    """
+
+    def __init__(self, data, empresa, **kwargs):
+        self.__data = data
+        self.__empresa = empresa
+
+    ## Define data como propiedad del objeto
+    @property
+    def data(self):
+        return self.__data
+    
+    ## Define empresa como propiedad del objeto
+    @property
+    def empresa(self):
+        return self.__empresa
+
+    @classmethod
+    def read_csv(cls, file_path, empresa, **kwargs):
+        data = pd.read_csv(file_path, delimiter=kwargs['delimiter'])
+        return cls(data, empresa=empresa)
+    
+    ## Reglas para tipo de dato
+    def set_data(self, data):
+
+        from pandas.core.frame import DataFrame as pdf
+        
+        # Para validar tipos de formato de objetos de entrada
+        if isinstance(data, pdf):
+            self.__data = data
+        else:
+            raise TypeError(f"Los valores de entrada {data} no son del tipo indicado")
