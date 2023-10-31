@@ -26,6 +26,11 @@ def _raw_to(prj, metodo, var):
     if metodo == 'z-score':
 
         return __raw_to_zcore(prj, var)
+    
+    else:
+
+        raise ValueError("No existe ese método para estandarizar")
+
 
 ## Convierte series en series a un arreglo de dos variables e índices
 def __raw_to_zcore(prj, var):
