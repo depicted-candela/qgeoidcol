@@ -70,7 +70,6 @@ def _data_elip_terreno():
     
     return param
 
-
 def _correccion_proyectos_terrestres(df):
     
     """

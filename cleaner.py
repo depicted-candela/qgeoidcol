@@ -8,9 +8,11 @@ Created on Wed May 31 09:16:51 2023
 
 from .models import Project, GrvLvlProject, AeroRawProject, TerrainRawProject
 
-import os, argparse
+import os, argparse, copy
 import pandas as pd
-import copy
+import numpy as np
+from scipy import stats
+from matplotlib import pyplot as plt
 
 
 class Limpiadores:
@@ -34,7 +36,161 @@ class Limpiadores:
         df_limpio = limpiador_horizontal(prj.df, id, var, geom)
         
         return df_limpio
+    
+    ## Para limpiar por línea segmentos límite con variable comparable
+    def limpiar_lineas(self, prj, calc, filt, **kwargs):
 
+        limpiador_por_linea = traer_limpiador_por_linea(prj)
+        df_limpio = limpiador_por_linea(prj, calc, filt, **kwargs)
+
+        prj.set_df_file_tipo(df_limpio, prj.file, prj.tipo)
+
+## Limpia líneas utilizando variable comparadora para borrar zonas
+## no convergentes al filtro
+def traer_limpiador_por_linea(prj):
+
+    if isinstance(prj, AeroRawProject) and prj.empresa == 'carson':
+
+        return _limpiador_linea_carson
+    
+
+def _limpiador_linea_carson(prj, cal, fil, **kwargs):
+
+    resultdf = pd.DataFrame(columns=prj.df.columns)
+
+    calc = prj.df.columns.get_loc(cal)
+    filt = prj.df.columns.get_loc(fil)
+
+    if 'direction' not in kwargs.keys(): kwargs['direction'] = 'onward'
+
+    for g in prj.groups:
+        subdf = prj.return_subdf(g)
+        subarray = np.array(subdf)
+        subarray = subarray.T
+        calc_subarray = subarray[calc]
+        filt_subarray = subarray[filt]
+        if kwargs['direction'] == 'onward':
+            tempdf = __general_onward(calc_subarray, filt_subarray, subdf, g, **kwargs)
+        elif kwargs['direction'] == 'backward':
+            print(len(subdf))
+            tempdf = __general_backward(calc_subarray, filt_subarray, subdf, g, **kwargs)
+            print(len(tempdf))
+        elif kwargs['direction'] == 'both':
+            tempdf = __general_both(calc_subarray, filt_subarray, subdf, g, calc, filt, **kwargs)
+        resultdf = pd.concat([resultdf, tempdf])
+    
+    return resultdf
+
+def __general_both(calc_subarray, filt_subarray, subdf, g, cal, fil, **kwargs):
+
+    cl = __comp_lines_onward(calc_subarray, filt_subarray, g, **kwargs)
+    if not cl:
+        tempdf = subdf
+    else:
+        tempdf = subdf.iloc[cl:]
+
+    subarray = np.array(tempdf)
+    subarray = subarray.T
+    calc_subarray = subarray[cal]
+    filt_subarray = subarray[fil]
+
+    cl = __comp_lines_backward(calc_subarray, filt_subarray, g, **kwargs)
+    if not cl:
+        tempdf = tempdf
+    else:
+        tempdf = tempdf.iloc[:cl]
+    
+    return tempdf
+
+def __general_onward(calc_subarray, filt_subarray, subdf, g, **kwargs):
+    cl = __comp_lines_onward(calc_subarray, filt_subarray, g, **kwargs)
+    if not cl:
+        tempdf = subdf
+    else:
+        tempdf = subdf.iloc[cl:]
+    return tempdf
+
+def __general_backward(calc_subarray, filt_subarray, subdf, g, **kwargs):
+    cl = __comp_lines_backward(calc_subarray, filt_subarray, g, **kwargs)
+    if not cl:
+        tempdf = subdf
+    else:
+        tempdf = subdf.iloc[:cl]
+    return tempdf
+
+## Compara si la diferencia entre dos valores es positiva False
+## o negativa True
+def __comparador_simple(calc, filt):
+    dif = calc - filt
+    return True if dif < 0 else False
+
+## Detecta primera intersección entre dos líneas
+def __sign_change_onward(calc, filt):
+    cl = __comparador_simple(calc[0], filt[0])
+    for i, csa in enumerate(calc):
+        if cl != __comparador_simple(csa, filt[i]):
+            return i
+    return False
+
+## Detecta primera intersección entre dos líneas
+def __sign_change_backward(calc, filt):
+    cl = __comparador_simple(calc[0], filt[0])
+    for i, csa in enumerate(reversed(calc)):
+        if cl != __comparador_simple(csa, filt[len(calc) - 1 - i]):
+            return len(calc) - 1 - i
+    return False
+
+## Compara si dos muestras son estadísticamente diferentes
+def __comp_lines_backward(calc, filt, g, **kwargs):
+    index = __sign_change_backward(calc, filt)
+    sub_calc = calc[index-1:]
+    sub_filt = filt[index-1:]
+    time = np.array(range(len(sub_calc)))
+    if len(sub_calc) < 7: return None
+    t_stat, p_value = stats.ttest_ind(sub_calc, sub_filt, equal_var=True)
+    alpha = 0.05  # significance level
+    if p_value < alpha:
+        if 'plot' in kwargs.keys() and kwargs['plot'] == True:
+            plt.plot(time, sub_calc)
+            plt.plot(time, sub_filt)
+            plt.title(f"Different (bakward {g})")
+            plt.show()
+        return index
+    else:
+        if 'plot' in kwargs.keys() and kwargs['plot'] == True:
+            plt.plot(time, sub_calc)
+            plt.plot(time, sub_filt)
+            plt.title(f"Not different (bakward {g})")
+            plt.show()
+        return None
+
+## Compara si dos muestras son estadísticamente diferentes
+def __comp_lines_onward(calc, filt, g, **kwargs):
+    index = __sign_change_onward(calc, filt)
+    sub_calc = calc[:index+1]
+    sub_filt = filt[:index+1]
+    aa = [i for i in sub_calc if type(i) != float]
+    print(len(aa))
+    bb = [i for i in sub_filt if type(i) != float]
+    print(len(bb))
+    time = np.array(range(len(sub_calc)))
+    if len(sub_calc) < 7: return None
+    t_stat, p_value = stats.ttest_ind(sub_calc, sub_filt, equal_var=True)
+    alpha = 0.05  # significance level
+    if p_value < alpha:
+        if 'plot' in kwargs.keys() and kwargs['plot'] == True:
+            plt.plot(time, sub_calc)
+            plt.plot(time, sub_filt)
+            plt.title(f"Different (onward {g})")
+            plt.show()
+        return index
+    else:
+        if 'plot' in kwargs.keys() and kwargs['plot'] == True:
+            plt.plot(time, sub_calc)
+            plt.plot(time, sub_filt)
+            plt.title(f"Not different (onward {g})")
+            plt.show()
+        return None
 
 ## Segmenta el limpiador vertical por tipo de archivo
 def traer_limpiador_vertical(prj):
