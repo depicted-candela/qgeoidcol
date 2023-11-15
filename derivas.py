@@ -32,6 +32,7 @@ def _deriva_carson(prj, data, var):
         try:
             deriva_g = abs(tempdata.iloc[0]['AfterFlight'] - tempdata.iloc[0]['AfterFlight']) / len(tempdf)
             tempdf[var] = tempdf[var] - deriva_g
+            print(f"Grupo {g} tiene deriva en documento fuente")
         except:
             print(f"Grupo {g} no tiene deriva en documento fuente")
         

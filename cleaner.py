@@ -43,7 +43,7 @@ class Limpiadores:
         limpiador_por_linea = traer_limpiador_por_linea(prj)
         df_limpio = limpiador_por_linea(prj, calc, filt, **kwargs)
 
-        prj.set_df_file_tipo(df_limpio, prj.file, prj.tipo)
+        return prj.set_df_file_tipo(df_limpio, prj.file, prj.tipo)
 
 ## Limpia líneas utilizando variable comparadora para borrar zonas
 ## no convergentes al filtro
@@ -72,9 +72,7 @@ def _limpiador_linea_carson(prj, cal, fil, **kwargs):
         if kwargs['direction'] == 'onward':
             tempdf = __general_onward(calc_subarray, filt_subarray, subdf, g, **kwargs)
         elif kwargs['direction'] == 'backward':
-            print(len(subdf))
             tempdf = __general_backward(calc_subarray, filt_subarray, subdf, g, **kwargs)
-            print(len(tempdf))
         elif kwargs['direction'] == 'both':
             tempdf = __general_both(calc_subarray, filt_subarray, subdf, g, calc, filt, **kwargs)
         resultdf = pd.concat([resultdf, tempdf])
@@ -83,24 +81,24 @@ def _limpiador_linea_carson(prj, cal, fil, **kwargs):
 
 def __general_both(calc_subarray, filt_subarray, subdf, g, cal, fil, **kwargs):
 
-    cl = __comp_lines_onward(calc_subarray, filt_subarray, g, **kwargs)
-    if not cl:
-        tempdf = subdf
-    else:
-        tempdf = subdf.iloc[cl:]
-
-    subarray = np.array(tempdf)
-    subarray = subarray.T
-    calc_subarray = subarray[cal]
-    filt_subarray = subarray[fil]
-
     cl = __comp_lines_backward(calc_subarray, filt_subarray, g, **kwargs)
     if not cl:
-        tempdf = tempdf
+        _tempdf = subdf
     else:
-        tempdf = tempdf.iloc[:cl]
+        _tempdf = subdf.iloc[cl:]
+
+    subarray = np.array(_tempdf)
+    subarray = subarray.T
+    _calc_subarray = subarray[cal]
+    _filt_subarray = subarray[fil]
+
+    cl = __comp_lines_onward(_calc_subarray, _filt_subarray, g, **kwargs)
+    if not cl:
+        _tempdf_c = _tempdf
+    else:
+        _tempdf_c = _tempdf.iloc[:cl]
     
-    return tempdf
+    return _tempdf_c
 
 def __general_onward(calc_subarray, filt_subarray, subdf, g, **kwargs):
     cl = __comp_lines_onward(calc_subarray, filt_subarray, g, **kwargs)
@@ -145,6 +143,8 @@ def __comp_lines_backward(calc, filt, g, **kwargs):
     index = __sign_change_backward(calc, filt)
     sub_calc = calc[index-1:]
     sub_filt = filt[index-1:]
+    sub_calc = pd.to_numeric(sub_calc, errors='coerce')
+    sub_filt = pd.to_numeric(sub_filt, errors='coerce')
     time = np.array(range(len(sub_calc)))
     if len(sub_calc) < 7: return None
     t_stat, p_value = stats.ttest_ind(sub_calc, sub_filt, equal_var=True)
@@ -169,10 +169,8 @@ def __comp_lines_onward(calc, filt, g, **kwargs):
     index = __sign_change_onward(calc, filt)
     sub_calc = calc[:index+1]
     sub_filt = filt[:index+1]
-    aa = [i for i in sub_calc if type(i) != float]
-    print(len(aa))
-    bb = [i for i in sub_filt if type(i) != float]
-    print(len(bb))
+    sub_calc = pd.to_numeric(sub_calc, errors='coerce')
+    sub_filt = pd.to_numeric(sub_filt, errors='coerce')
     time = np.array(range(len(sub_calc)))
     if len(sub_calc) < 7: return None
     t_stat, p_value = stats.ttest_ind(sub_calc, sub_filt, equal_var=True)
@@ -552,7 +550,6 @@ def levelling_gravity_intersect(**kwargs):
             
             return GrvLvlProject(files, intersects(prj2, prj1, coords),
                                  GrvLvlProject.VALID_TYPES[0], 'nomenclatura')
-        
         
     else:
         
