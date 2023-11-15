@@ -6,12 +6,27 @@ Created on Tue Jun 27 11:39:07 2023
 @author: nicalcoca
 """
 
-from .models import GrvLvlProject, GrvLvlCorrProject
+from .models import GrvLvlProject, GrvLvlCorrProject, AeroRawProject, AeroCorrectProject
 from .elipsoides import GRS_80
 
 import math as mt
 import numpy as np
 import pandas as pd
+import jpype
+
+
+def _data_elip_terreno():
+    
+    grs80 = GRS_80()
+    
+    param = [grs80.A]
+    param.append(grs80.B)
+    param.append(grs80.M)
+    param.append(grs80.GE)
+    param.append(grs80.GP)
+    param.append(grs80.F)
+    
+    return param
 
 
 class Correcciones:
@@ -20,19 +35,14 @@ class Correcciones:
     Clase calculadora de correcciones de gravedad
     """
     
-    def corregir(self, df, prj):
+    def corregir(self, prj, **kwargs):
         
-        corrector = get_corrector(prj)
-        
-        cordf = corrector(df)
-        
-        return GrvLvlCorrProject(prj.file,
-                                 cordf,
-                                 'nivelacion-gravedades-intersectado-correcciones',
-                                 prj.metodo)
+        corrector = get_corrector(prj, **kwargs)
+
+        return corrector
 
 
-def get_corrector(prj):
+def get_corrector(prj, **kwargs):
     
     """
     TRAE LAS CORRECCIONES
@@ -50,27 +60,133 @@ def get_corrector(prj):
     """
     
     if isinstance(prj, GrvLvlProject):
+        # return GrvLvlCorrProject(prj.file,
+        #                          _correccion_proyectos_terrestres,
+        #                          'nivelacion-gravedades-intersectado-correcciones',
+        #                          prj.metodo,
+        #                          empresa='carson')
         return _correccion_proyectos_terrestres
-    elif isinstance(prj, GrvLvlProject):
+    
+    elif isinstance(prj, AeroRawProject):
         
+        return AeroCorrectProject(prj.file,
+                           _correccion_proyectos_aereos(prj, **kwargs),
+                           'aire-libre-aereo',
+                           empresa='carson')
+    
     else:
         raise ValueError("El tipo de proyecto no es adecuado")
-    
-    
-def _data_elip_terreno():
-    
-    grs80 = GRS_80()
-    
-    param = [grs80.A]
-    param.append(grs80.B)
-    param.append(grs80.M)
-    param.append(grs80.GE)
-    param.append(grs80.GP)
-    param.append(grs80.F)
-    
-    return param
 
-def _correccion_proyectos_terrestres(df):
+
+def __validadores_correccion_proyectos_aereos(**kwargs):
+
+    if 'lat' not in kwargs.keys():
+        raise ValueError("Debe proporcionar el nombre de la variable que contiene las latitudes de los puntos")
+    if 'long' not in kwargs.keys():
+        raise ValueError("Debe proporcionar el nombre de la variable que contiene las longitudes de los puntos")
+    if 'fly_height' not in kwargs.keys():
+        raise ValueError("Debe proporcionar el nombre de la variable que contiene las altitudes de vuelo")
+    if 'grav' not in kwargs.keys():
+        raise ValueError("Debe proporcionar el nombre de la variable que contiene las latitudes de los puntos")
+    
+
+def _correccion_proyectos_aereos(prj, **kwargs):
+    
+    """
+    PARA CALCULAR ANOMALÍAS DE PROYECTOS AÉREOS.
+
+    Parameters
+    ----------
+    prj : AeroRawProject
+        PROYECTO AÉREO.
+
+    Returns
+    -------
+    pandas dataframe
+        DATA FRAME DEL PROYECTO TERRESTRE MÁS ANOMALÍA DE AIRE LIBRE.
+
+    """
+
+    ## Valida argumentos
+    __validadores_correccion_proyectos_aereos(**kwargs)
+
+    ## Agrega valores de argumentos
+    args_agg = [kwargs['lat'], kwargs['long'], kwargs['fly_height'], kwargs['grav']]
+
+    from pyshtools.gravmag import NormalGravity as ng
+    from qgeoidcol.elipsoides import GRS_80
+
+    ## Metadato del GRS80
+    grs80 = GRS_80()
+
+    ## Arreglo de variables necesarias para calcular
+    ## ondulación geoidal y gravedad normal
+    subarray = np.array(prj.df[args_agg]).T
+
+    ## Gravedad normal con elipsoide GRS80
+    normalgrav = ng(subarray[1],
+                    grs80.GM, grs80.W,
+                    grs80.A, grs80.B) * 100000
+    
+    ## Gravedad observada menos gravedad normal
+    term1 = np.array(subarray[3]) - normalgrav
+
+    ## Cálculo de ondulación geoidal interpolando
+    ## con el paquete de Tinfour de Java
+    N = _tinfour_natural_neighbor(subarray[:3])
+    N = np.array(N)
+
+    ## Cálculo de anomalía de Aire Libre
+    free_air = term1 + 0.3086 * (subarray[2] - N)
+
+    ## Finished the connection to the java class
+    jpype.shutdownJVM()
+
+    ## Almacena anomalía de Aire Libre
+    subdf = prj.df
+    subdf['FREE_AIR'] = free_air
+
+    return subdf
+
+def _tinfour_natural_neighbor(array):
+
+    """
+    INTERPOLA ONDULACIONES GEOIDALES CON LIBRERÍA TINFOUR DE JAVA
+    https://github.com/gwlucastrig/Tinfour (INFORMACIÓN RELACIONADA
+    en https://gwlucastrig.github.io/TinfourDocs/). FUE UTILIZADO UN
+    MODELO GEOIDAL GLOBAL DESCARGADO DE http://icgem.gfz-potsdam.de/home
+    PARA EL PAQUETE DE JAVA.
+
+    Parameters
+    ----------
+    array : numpy.ndarray
+
+    Returns
+    -------
+    numpy.ndarray
+        ARREGLO DE ONDULACIONES GEOIDALES
+
+    """
+
+    ## Start the JVM with the directory containing class file
+    jpype.startJVM(classpath=['/home/nicalcoca/eclipse-workspace/JToolsQgeoid/bin/',
+                            '/home/nicalcoca/eclipse-workspace/jars/TinfourCore-2.1.7.jar'])
+    
+    ## Initiliaze the NaturalNeighbor class
+    NaturalNeighbor = jpype.JClass('interpolations.NaturalNeighbor')
+
+    ## Uses the NaturalNeighnor constructor
+    nni = NaturalNeighbor(array[1, :].tolist(), array[0, :].tolist())
+
+    ## Interpolates all the points with NaturalNeighbor
+    values = nni.getInterps()
+
+    ## Java instance to array
+    values_array = np.array(list(values))
+
+    return values_array
+
+def _correccion_proyectos_terrestres(prj, **kwargs):
     
     """
     PARA CALCULAR ANOMALÍAS DE PROYECTOS TERRESTRES.
@@ -95,12 +211,12 @@ def _correccion_proyectos_terrestres(df):
     GE = _vars[3]
     GP = _vars[4]
     F = _vars[5]
-    geom = df['GEOM']
+    geom = prj.df['GEOM']
     
     som = _somigliana(A, B, M, GE, GP, geom)
     
-    grav = df['GRAV']
-    H = df['ALTURA_M_S']
+    grav = prj.df['GRAV']
+    H = prj.df['ALTURA_M_S']
     F = _vars[5]
     
     aire = _aire_libre(A, M, F, som, geom, grav, H)
@@ -108,7 +224,7 @@ def _correccion_proyectos_terrestres(df):
     
     df_c = pd.DataFrame({'AIRE_LIBRE': aire, 'BOUGUER': bouguer})
     
-    return pd.concat([df, df_c], axis=1)
+    return pd.concat([prj.df, df_c], axis=1)
     
 
 def geom_phi(geom):

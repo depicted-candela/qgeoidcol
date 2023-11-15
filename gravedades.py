@@ -1,6 +1,7 @@
 from .models import AeroRawProject
 from .string_tools import split_text_in_equal_lines as stiql
 
+
 class Gravedades:
     
     """
@@ -13,6 +14,40 @@ class Gravedades:
         df_con_grav = calculador(prj, kwargs)
         
         return prj.set_df_file_tipo(df_con_grav, prj.file, prj.tipo)
+
+
+def __base(name, df, prj, **kwargs):
+
+    """
+    PARA AÑADIR BASE GRAVIMÉTRICA A LECTURAS RELATIVAS DE PROYECTOS AÉREOS
+
+    Parameters
+    ----------
+    name : string
+        NOMBRE DE NUEVA VARIABLE SIN BASE GRAVIMÉTRICA ASOCIADA
+    df : pandas.core.frame.DataFrame
+        PROYECTO A CALCULAR.
+    kwargs : lista de string
+        VALOR DECIMAL DE LA BASE GRAVIMÉTRICA ASOCIADA AL PROYECTO.
+    Raises
+    ------
+    ValueError
+        MENSAJE DE ERROR POR VARIABLES ERRONEAS.
+
+    Returns
+    -------
+    pandas.core.frame.DataFrame.
+        DATAFRAME CON ACELERACIÓN CALCULADA
+
+    """
+        
+    if 'base' in kwargs.keys():
+        if type(kwargs['base']) != float: raise ValueError("El valor de la base debe ser decimal")
+        df[name + '_CON_ABSOLUTA'] = df[name] + kwargs['base']
+    if 'exact' in kwargs.keys() and type(kwargs['exact']) == float and kwargs['exact'] > 0:
+        prj.set_exactitud(kwargs['exact'])
+    else:
+        raise ValueError("La exactitud debe ser decimal y positiva")
 
 
 def get_gravedades(prj, metodo):
@@ -94,46 +129,11 @@ def _aerogravimetria_relativa(prj, kwargs):
         raise ValueError(f"Las variables {beam} o {spring} no están en los datos del objeto")
 
     df = prj.df
-    name = 'REL'
-    df[name] = df[beam] + df[spring]
+    df['REL'] = df[beam] + df[spring]
 
-    __base(name, df, prj, **kwargs)
+    __base('REL', df, prj, **kwargs)
 
     return df
-
-def __base(name, df, prj, **kwargs):
-
-    """
-    PARA AÑADIR BASE GRAVIMÉTRICA A LECTURAS RELATIVAS DE PROYECTOS AÉREOS
-
-    Parameters
-    ----------
-    name : string
-        NOMBRE DE NUEVA VARIABLE SIN BASE GRAVIMÉTRICA ASOCIADA
-    df : pandas.core.frame.DataFrame
-        PROYECTO A CALCULAR.
-    kwargs : lista de string
-        VALOR DECIMAL DE LA BASE GRAVIMÉTRICA ASOCIADA AL PROYECTO.
-    Raises
-    ------
-    ValueError
-        MENSAJE DE ERROR POR VARIABLES ERRONEAS.
-
-    Returns
-    -------
-    pandas.core.frame.DataFrame.
-        DATAFRAME CON ACELERACIÓN CALCULADA
-
-    """
-        
-    if 'base' in kwargs.keys():
-        if type(kwargs['base']) != float: raise ValueError("El valor de la base debe ser decimal")
-        df[name + '_CON_ABSOLUTA'] = df[name] + kwargs['base']
-    if 'exact' in kwargs.keys() and type(kwargs['exact']) == float and kwargs['exact'] > 0:
-        prj.set_exactitud(kwargs['exact'])
-    else:
-        raise ValueError("La exactitud debe ser decimal y positiva")
-
 
 def _aerogravimetria_relativa_vertacc(prj, kwargs):
     
@@ -174,10 +174,9 @@ def _aerogravimetria_relativa_vertacc(prj, kwargs):
     ## Calcula lectura relativa corrigiendo con aceleración
     ## vertical
     df = prj.df
-    name = 'REL_VA'
-    df[name] = df[beam] + df[spring] - df[vertacc]
+    df['REL_VA'] = df[beam] + df[spring] - df[vertacc]
 
-    __base(name, df, prj, **kwargs) ## Si es proporcionada la base gravimétrica
+    __base('REL_VA', df, prj, **kwargs) ## Si es proporcionada la base gravimétrica
 
     return df
 
@@ -221,11 +220,10 @@ def _aerogravimetria_relativa_vertacc_eotvos(prj, kwargs):
 
     ## Calcula lectura relativa corrigiendo con aceleración vertical
     ## y Eötvös
-    name = 'REL_VA_E'
     df = prj.df
-    df[name] = df[beam] + df[spring] - df[vertacc] + df[eotvos]
+    df['REL_VA_E'] = df[beam] + df[spring] - df[vertacc] - df[eotvos]
 
-    __base(name, df, prj, **kwargs) ## Si es proporcionada la base gravimétrica
+    __base('REL_VA_E', df, prj, **kwargs) ## Si es proporcionada la base gravimétrica
 
     return df
 
@@ -266,10 +264,9 @@ def _aerogravimetria_relativa_eotvos(prj, kwargs):
         raise ValueError(f"Las variables {beam} o {spring} o {eotvos} no están en los datos del objeto")
 
     ## Calcula lectura relativa corrigiendo con Eötvös
-    name = 'REL_E'
     df = prj.df
-    df[name] = df[beam] + df[spring] + df[eotvos]
+    df['REL_E'] = df[beam] + df[spring] + df[eotvos]
 
-    __base(name, df, prj, **kwargs) ## Si es proporcionada la base gravimétrica
+    __base('REL_E', df, prj, **kwargs) ## Si es proporcionada la base gravimétrica
 
     return df

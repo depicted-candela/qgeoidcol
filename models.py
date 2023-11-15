@@ -824,8 +824,12 @@ class RawProject(Project):
     
     ## Para comparar gráficamente una línea con histograma y series de tiempo
     def values_compared_per_group(self, project, var, self_group, project_group):
-        
-        if not isinstance(project, Project) or not isinstance(project, AeroRawProject) or not isinstance(project, RawProject):    
+
+        cond1 = isinstance(project, Project)            ## Condiciones
+        cond2 = isinstance(project, AeroRawProject)
+        cond3 = isinstance(project, RawProject)
+
+        if not cond1 or not cond2 or not cond3:    
             raise ValueError('El objeto a comparar no es de la clase adecuada')
         if not project.aggregator or not self.aggregator:
             raise ValueError('Primero agregue el dataframe')
@@ -895,12 +899,27 @@ class AeroRawProject(RawProject):
     ## Tipos válidos
     VALID_TYPES = ['crudo-aereo']
 
-class AeroCorrectProject(RawProject):
+class AeroCorrectProject(Project):
     
     """Clase para proyectos crudos de aerogravimetría"""
     
     ## Tipos válidos
     VALID_TYPES = ['aire-libre-aereo']
+
+        ## Define el agregador como propiedad del objeto
+    @property
+    def df(self):
+        return self._Project__df
+    
+    ## Define archivo como propiedad del objeto
+    @property
+    def file(self):
+        return self._Project__file
+    
+    # Define el tipo como propiedad del objecto
+    @property
+    def tipo(self):
+        return self._Project__tipo
     
 
 class TerrainRawProject(RawProject):
