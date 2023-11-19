@@ -99,12 +99,26 @@ def _reader_prj(wd, file, **kwargs):
     if file_ext == '.csv':
         
         df = pd.read_csv(file, delimiter=',')
+
+        if 'geometry' in df.columns:
+            df = df.rename(columns={'geometry': 'GEOM'})
+        elif 'geom' in df.columns:
+            df = df.rename(columns={'geometry': 'GEOM'})
+        else:
+            pass
     
     ## Archivos .shp
     elif file_ext == '.shp' or file_ext == '.gpkg':
         
         gdf = gpd.read_file(file)
         df = pd.DataFrame(gdf)
+
+        if 'geometry' in df.columns:
+            df = df.rename(columns={'geometry': 'GEOM'})
+        elif 'geom' in df.columns:
+            df = df.rename(columns={'geometry': 'GEOM'})
+        else:
+            pass
         
     ## El resto de archivos
     else:
@@ -119,7 +133,14 @@ def _reader_prj(wd, file, **kwargs):
     
         ## Para objetos de clase RawProject
         case 'crudo-aereo':
-            return AeroRawProject(file, df, tipo)
+
+            prj = AeroRawProject(file, df, tipo)
+
+            if 'long' in kwargs.keys() and 'lat' in kwargs.keys():
+
+                prj.spatialize_vars(kwargs['long'], kwargs['lat'])
+
+            return prj
         
         case 'crudo-terreno':
             return TerrainRawProject(file, df, tipo)

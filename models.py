@@ -928,6 +928,29 @@ class TerrainRawProject(RawProject):
     
     ## Tipos válidos
     VALID_TYPES = ['crudo-terreno']
+
+
+class TerrainCorrectProject(Project):
+
+    """Clase para proyectos crudos de aerogravimetría"""
+    
+    ## Tipos válidos
+    VALID_TYPES = ['aire-libre-terreno']
+
+        ## Define el agregador como propiedad del objeto
+    @property
+    def df(self):
+        return self._Project__df
+    
+    ## Define archivo como propiedad del objeto
+    @property
+    def file(self):
+        return self._Project__file
+    
+    # Define el tipo como propiedad del objecto
+    @property
+    def tipo(self):
+        return self._Project__tipo
     
 
 

@@ -11,7 +11,7 @@ class Gravedades:
     def calcular_gravedad(self, prj, metodo, **kwargs):
         
         calculador = get_gravedades(prj, metodo)
-        df_con_grav = calculador(prj, kwargs)
+        df_con_grav = calculador(prj, **kwargs)
         
         return prj.set_df_file_tipo(df_con_grav, prj.file, prj.tipo)
 
@@ -44,6 +44,7 @@ def __base(name, df, prj, **kwargs):
     if 'base' in kwargs.keys():
         if type(kwargs['base']) != float: raise ValueError("El valor de la base debe ser decimal")
         df[name + '_CON_ABSOLUTA'] = df[name] + kwargs['base']
+        return df
     if 'exact' in kwargs.keys() and type(kwargs['exact']) == float and kwargs['exact'] > 0:
         prj.set_exactitud(kwargs['exact'])
     else:
@@ -84,7 +85,15 @@ def get_gravedades(prj, metodo):
         elif metodo == 'relativa_eotvos':
 
             return _aerogravimetria_relativa_eotvos
+
+        elif metodo == 'normal':
+
+            return _gravedad_normal_elip
         
+        elif metodo == 'carson_indirect':
+
+            return _aerogravimetria_relativa_carson_indirect
+
         else:
 
             raise ValueError("El método no está disponible, los métodos son 'relativa', 'relativa_vertacc', 'relativa_vertacc_eotvos' y 'relativa_eotvos'")
@@ -93,7 +102,50 @@ def get_gravedades(prj, metodo):
 
         raise ValueError("Tipo de proyecto no soportado")
 
-def _aerogravimetria_relativa(prj, kwargs):
+def __aerograv_rel_carson_ind_validator(**kwargs):
+
+    if 'free_air' not in kwargs.keys() or 'free_air_corr' not in kwargs.keys():
+        raise ValueError("Debes prover variables de 'free_air_corr' y 'free_air'")
+    
+def _aerogravimetria_relativa_carson_indirect(prj, **kwargs):
+
+    __aerograv_rel_carson_ind_validator(**kwargs)
+
+    if 'normal' not in kwargs.keys():
+        kwargs['normal'] = 'NORMAL_GRAV'
+        subdf = _gravedad_normal_elip(prj)
+    else:
+        subdf = prj.df
+    
+    subdf['GRAV'] = subdf[kwargs['free_air']] + subdf[kwargs['normal']] - subdf[kwargs['free_air_corr']]
+
+    return subdf
+
+    
+def __grv_normal_validator(prj):
+
+    if 'GEOM' not in prj.df.columns: raise ValueError('El objeto debe tener una variable geométrica GEOM')
+
+def _gravedad_normal_elip(prj):
+
+    __grv_normal_validator(prj)
+
+    from pyshtools.gravmag import NormalGravity as ng
+    from .elipsoides import GRS_80
+
+    grs80 = GRS_80()
+
+    ## Gravedad normal con elipsoide GRS80
+    normalgrav = ng(prj.df['GEOM'].apply(lambda x: ___geom_phi(x)),
+                    grs80.GM, grs80.W,
+                    grs80.A, grs80.B) * 100000
+    
+    subdf = prj.df
+    subdf['NORMAL_GRAV'] = normalgrav
+
+    return subdf
+
+def _aerogravimetria_relativa(prj, **kwargs):
     
     """
     PARA REGRESAR ACELERACIONES DE PROYECTOS AÉREOS
@@ -131,11 +183,11 @@ def _aerogravimetria_relativa(prj, kwargs):
     df = prj.df
     df['REL'] = df[beam] + df[spring]
 
-    __base('REL', df, prj, **kwargs)
+    df = __base('REL', df, prj, **kwargs)
 
     return df
 
-def _aerogravimetria_relativa_vertacc(prj, kwargs):
+def _aerogravimetria_relativa_vertacc(prj, **kwargs):
     
     """
     PARA REGRESAR ACELERACIONES DE PROYECTOS AÉREOS
@@ -176,12 +228,12 @@ def _aerogravimetria_relativa_vertacc(prj, kwargs):
     df = prj.df
     df['REL_VA'] = df[beam] + df[spring] - df[vertacc]
 
-    __base('REL_VA', df, prj, **kwargs) ## Si es proporcionada la base gravimétrica
+    df = __base('REL_VA', df, prj, **kwargs) ## Si es proporcionada la base gravimétrica
 
     return df
 
 
-def _aerogravimetria_relativa_vertacc_eotvos(prj, kwargs):
+def _aerogravimetria_relativa_vertacc_eotvos(prj, **kwargs):
     
     """
     PARA REGRESAR ACELERACIONES DE PROYECTOS AÉREOS
@@ -223,11 +275,12 @@ def _aerogravimetria_relativa_vertacc_eotvos(prj, kwargs):
     df = prj.df
     df['REL_VA_E'] = df[beam] + df[spring] - df[vertacc] - df[eotvos]
 
-    __base('REL_VA_E', df, prj, **kwargs) ## Si es proporcionada la base gravimétrica
+    if 'base' in kwargs.keys():
+        df = __base('REL_VA_E', df, prj, **kwargs) ## Si es proporcionada la base gravimétrica
 
     return df
 
-def _aerogravimetria_relativa_eotvos(prj, kwargs):
+def _aerogravimetria_relativa_eotvos(prj, **kwargs):
     
     """
     PARA REGRESAR ACELERACIONES DE PROYECTOS AÉREOS
@@ -265,8 +318,45 @@ def _aerogravimetria_relativa_eotvos(prj, kwargs):
 
     ## Calcula lectura relativa corrigiendo con Eötvös
     df = prj.df
-    df['REL_E'] = df[beam] + df[spring] + df[eotvos]
+    df['REL_E'] = df[beam] + df[spring] - df[eotvos]
 
-    __base('REL_E', df, prj, **kwargs) ## Si es proporcionada la base gravimétrica
+    if 'base' in kwargs.keys():
+        df = __base('REL_E', df, prj, **kwargs) ## Si es proporcionada la base gravimétrica
 
     return df
+
+def ___geom_phi(geom):
+    
+    """
+    Para pasar de Point a latitud
+
+    Parameters
+    ----------
+    geom : lista de shapely.geometry.point.Point
+        GEOMETRÍA DEL PUNTO DE OBSERVACIÓN.
+
+    Returns
+    -------
+    Lista de latitudes.
+
+    """
+    
+    return geom.y
+
+def ___geom_lambda(geom):
+    
+    """
+    Para pasar de Point a latitud
+
+    Parameters
+    ----------
+    geom : lista de shapely.geometry.point.Point
+        GEOMETRÍA DEL PUNTO DE OBSERVACIÓN.
+
+    Returns
+    -------
+    Lista de latitudes.
+
+    """
+    
+    return geom.x
