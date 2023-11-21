@@ -33,6 +33,6 @@ def _altura_anomala(prj, **kwargs):
                                      **kwargs)
     
     subdf = prj.df
-    subdf["Xi"] = height_anomaly
+    subdf["zeta"] = height_anomaly
 
     return subdf
