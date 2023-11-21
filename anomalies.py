@@ -127,7 +127,7 @@ def _correccion_proyectos_aereos(prj, **kwargs):
     altura.calcular_altura(prj, 'altura_anomala', modelo='eigen_6c4')
 
     ## Cálculo de anomalía de Aire Libre
-    H_Q = subarr[2] - prj.df["Xi"]
+    H_Q = subarr[2] - prj.df["zeta"]
     subdf = prj.df
     subdf['A_AIRE_LIBRE'] = __aly_aire_libre(H_Q,
                                         subarr[3],
