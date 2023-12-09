@@ -19,11 +19,11 @@ class Lector:
     """
     Clase lectora de archivos para el modelo geoidal
     """
-    def leer(self, wd, file, metodo='proyecto_gravedad', **kwargs):
+    def leer(self, path_file, metodo='proyecto_gravedad', **kwargs):
 
         lector = get_lector(metodo)
 
-        return lector(wd, file, **kwargs)
+        return lector(path_file, **kwargs)
 
 
 ## Lector para archivos
@@ -42,7 +42,7 @@ def get_lector(metodo):
         raise ValueError("Método desconocido")
 
 ## Lector de archivos de deriva
-def _reader_deriva(wd, file, **kwargs):
+def _reader_deriva(path_file, **kwargs):
 
     try:
         empresa = kwargs['empresa']
@@ -50,7 +50,7 @@ def _reader_deriva(wd, file, **kwargs):
         raise ValueError("Debe proporcionar el 'delimitador' y la 'empresa")
     
     if empresa == 'carson':
-        return __deriva_carson(file, **kwargs)
+        return __deriva_carson(path_file, **kwargs)
     
     else:
         raise ValueError("Empresa desconocida")
@@ -84,33 +84,31 @@ def __deriva_carson(file, **kwargs):
     return concat
 
 ## Lector de archivos de gravimetría y altimetría
-def _reader_prj(wd, file, **kwargs):
+def _reader_prj(path_file, **kwargs):
 
     try:
         tipo = kwargs['tipo']
     except:
         raise ValueError("Debe proporcionar el 'tipo' de objeto si quiere subir un archivo gravimétrico")
     
-    file_name, file_ext = os.path.splitext(file)
-    
-    os.chdir(wd)
-    
+    file_name, file_ext = os.path.splitext(path_file)
+
     ## Archivos .csv
     if file_ext == '.csv':
-        
-        df = pd.read_csv(file, delimiter=',')
-
+        df = pd.read_csv(path_file, delimiter=',')
+        gdf = gpd.GeoDataFrame(df, geometry=gpd.points_from_xy(df[kwargs['longitud']], df[kwargs['latitud']]))
+        df  = pd.DataFrame(gdf)
         if 'geometry' in df.columns:
             df = df.rename(columns={'geometry': 'GEOM'})
         elif 'geom' in df.columns:
-            df = df.rename(columns={'geometry': 'GEOM'})
+            df = df.rename(columns={'geom': 'GEOM'})
         else:
             pass
     
     ## Archivos .shp
     elif file_ext == '.shp' or file_ext == '.gpkg':
         
-        gdf = gpd.read_file(file)
+        gdf = gpd.read_file(path_file)
         df = pd.DataFrame(gdf)
 
         if 'geometry' in df.columns:
@@ -129,19 +127,19 @@ def _reader_prj(wd, file, **kwargs):
         
         ## Para objetos de clase Proyecto
         case 'nivelacion'|'gravedad-absoluta'|'gravedad-relativa'|'gravedades':
-            return Project(file, df, tipo)
+            return Project(path_file, df, tipo)
     
         ## Para objetos de clase RawProject
         case 'crudo-aereo':
 
-            prj = AeroRawProject(file, df, tipo)
+            prj = AeroRawProject(path_file, df, tipo)
 
-            if 'long' in kwargs.keys() and 'lat' in kwargs.keys():
+            if 'longitud' in kwargs.keys() and 'latitud' in kwargs.keys():
 
-                prj.spatialize_vars(kwargs['long'], kwargs['lat'])
+                prj.spatialize_vars(kwargs['longitud'], kwargs['latitud'])
 
             return prj
         
         case 'crudo-terreno':
-            return TerrainRawProject(file, df, tipo)
+            return TerrainRawProject(path_file, df, tipo)
     
