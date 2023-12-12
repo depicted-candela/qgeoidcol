@@ -47,7 +47,7 @@ def _reader_deriva(path_file, **kwargs):
     try:
         empresa = kwargs['empresa']
     except:
-        raise ValueError("Debe proporcionar el 'delimitador' y la 'empresa")
+        raise ValueError("Debe proporcionar la 'empresa'")
     
     if empresa == 'carson':
         return __deriva_carson(path_file, **kwargs)
