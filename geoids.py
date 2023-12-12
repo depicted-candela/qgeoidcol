@@ -9,41 +9,58 @@ class Geoides():
     def extractor(self, prj, metodo, **kwargs):
 
         extraer = get_extractor(metodo)
-        extraccion = extraer(prj, **kwargs)
+        extraccion = extraer(prj, metodo, **kwargs)
         
         return extraccion
 
 def get_extractor(metodo):
 
-    if metodo == 'altura_anomala':
+    if metodo == 'altura_anomala' or metodo == 'ondulacion_geoidal':
 
-        return _altura_anomala_interp
+        return _measurement_interp
     
     else: raise ValueError(f"Variable {metodo} no implementada")
 
-def __altura_anomala_interp_validator(prj):
+def __interp_validator(prj):
 
     if "GEOM" not in prj.df.columns: raise ValueError("Debe tener una variable geométrica")
 
-def _altura_anomala_interp(prj, **kwargs):
-
-    import jpype
-    if not jpype.isJVMStarted():
-        jpype.startJVM(classpath=['/home/nicalcoca/eclipse-workspace/JToolsQgeoid/bin/',
-                                '/home/nicalcoca/eclipse-workspace/jars/TinfourCore-2.1.7.jar'])
+ 
+def _measurement_interp(prj, metodo, **kwargs):
     
-    array = np.array([prj.df['GEOM'].apply(lambda x : ___geom_lambda(x)),
-                      prj.df['GEOM'].apply(lambda x : ___geom_phi(x))])
+    __interp_validator(prj)
 
-    values_array = __tinfour_natural_neighbor(array, jpype, measurement="altura_anomala", modelo=kwargs["modelo"])
-    values_list = list(values_array)
-
-    jpype.shutdownJVM()
-
+    import threading
+    
+    ## Si el hilo principal no está en uso
+    if threading.current_thread() is threading.main_thread():
+        import jpype
+        if not jpype.isJVMStarted():
+            # jpype.startJVM(classpath=['/home/depiction/geodesia/JToolsQgeoid/bin/'])
+            jpype.startJVM(classpath=['/home/depiction/geodesia/JToolsQgeoid/bin/',
+                                    '/home/depiction/Documents/libraries/TinfourCore-2.1.7.jar'])
+        array = np.array([prj.df['GEOM'].apply(lambda x : ___geom_lambda(x)),
+                        prj.df['GEOM'].apply(lambda x : ___geom_phi(x))])
+        values_array = __tinfour_natural_neighbor(array,
+                                                  jpype=jpype,
+                                                  measurement=metodo,
+                                                  modelo=kwargs["modelo"])
+        values_list = list(values_array)
+        if threading.current_thread() is not threading.main_thread():
+            threading.current_thread().join()
+        jpype.shutdownJVM()
+    ## Si el hilo principal está usándose
+    else:
+        array = np.array([prj.df['GEOM'].apply(lambda x : ___geom_lambda(x)),
+                          prj.df['GEOM'].apply(lambda x : ___geom_phi(x))])
+        values_array = __tinfour_natural_neighbor(array,
+                                                  jpype=None,
+                                                  measurement=metodo,
+                                                  modelo=kwargs["modelo"])
+        values_list = list(values_array)
     return values_list
 
-
-def __tinfour_natural_neighbor(array, jpype, **kwargs):
+def __tinfour_natural_neighbor(array, **kwargs):
 
     """
     INTERPOLA ONDULACIONES GEOIDALES CON LIBRERÍA TINFOUR DE JAVA
@@ -62,21 +79,42 @@ def __tinfour_natural_neighbor(array, jpype, **kwargs):
         ARREGLO DE ONDULACIONES GEOIDALES
 
     """
+
+    if kwargs["jpype"]:
+
+        ## Initiliaze the NaturalNeighbor class
+        NaturalNeighbor = kwargs["jpype"].JClass('interpolations.NaturalNeighbor')
+
+        ## Uses the NaturalNeighnor constructor
+        if "measurement" in kwargs.keys() and "modelo" in kwargs.keys():
+            nni = NaturalNeighbor(array[0, :].tolist(), array[1, :].tolist(), kwargs["measurement"], kwargs["modelo"])
+        else:
+            nni = NaturalNeighbor(array[0, :].tolist(), array[1, :].tolist())
+
+        ## Interpolates all the points with NaturalNeighbor
+        values = nni.getInterps()
+
+        ## Java instance to array
+        values_array = np.array(list(values))
     
-    ## Initiliaze the NaturalNeighbor class
-    NaturalNeighbor = jpype.JClass('interpolations.NaturalNeighbor')
-
-    ## Uses the NaturalNeighnor constructor
-    if "measurement" in kwargs.keys() and "modelo" in kwargs.keys():
-        nni = NaturalNeighbor(array[0, :].tolist(), array[1, :].tolist(), kwargs["measurement"], kwargs["modelo"])
     else:
-        nni = NaturalNeighbor(array[0, :].tolist(), array[1, :].tolist())
 
-    ## Interpolates all the points with NaturalNeighbor
-    values = nni.getInterps()
+        import jpype
 
-    ## Java instance to array
-    values_array = np.array(list(values))
+        ## Initiliaze the NaturalNeighbor class
+        NaturalNeighbor = jpype.JClass('interpolations.NaturalNeighbor')
+
+        ## Uses the NaturalNeighnor constructor
+        if "measurement" in kwargs.keys() and "modelo" in kwargs.keys():
+            nni = NaturalNeighbor(array[0, :].tolist(), array[1, :].tolist(), kwargs["measurement"], kwargs["modelo"])
+        else:
+            nni = NaturalNeighbor(array[0, :].tolist(), array[1, :].tolist())
+
+        ## Interpolates all the points with NaturalNeighbor
+        values = nni.getInterps()
+
+        ## Java instance to array
+        values_array = np.array(list(values))
 
     return values_array
 

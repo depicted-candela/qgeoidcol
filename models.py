@@ -128,7 +128,7 @@ class Project:
     
     ## Resultado para la función print
     def __str__(self):
-        return f"{self.file}"
+        return f"Archivo de tipo {self.tipo} en archivo {self.file}"
     
     ## Espacializar con variables
     def spatialize_vars(self, x, y):
